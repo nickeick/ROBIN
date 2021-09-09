@@ -1,0 +1,1786 @@
+#!/usr/bin/python3
+
+from discord import Client, Game, File, PermissionOverwrite, FFmpegPCMAudio, Intents
+from discord.ext.tasks import loop
+from discord.utils import get
+from asyncio import sleep, TimeoutError
+from queue import Queue
+from random import randint
+from sqlite3 import connect
+from re import search
+from datetime import date, timedelta
+from time import localtime, strftime
+from client import start, get_msg, send
+from os.path import isfile
+from os import remove, environ, listdir, rename, getcwd
+import ffmpeg
+import youtube_dl
+from dotenv import load_dotenv
+from sys import platform
+
+load_dotenv()
+TOKEN = environ.get('TOKEN')
+AUDIO_PATH = environ.get('AUDIO_PATH')
+DATABASE_PATH = environ.get('DATABASE_PATH')
+FFMPEG_PATH = environ.get('FFMPEG_PATH')
+
+MyQueue = Queue()
+
+intents = Intents.default()
+intents.members = True
+
+DISCONNECT_MESSAGE = "#DISCONNECT#"
+#tables:
+#commands (command_name, output, author)
+#play_requests (game text UNIQUE, time text, yes text, no text, requestor text)
+#braincell_points (name text UNIQUE, points integer)
+#calendar (event_name text, year integer, month integer, day integer, time text, gang text)
+#emojis (emoji text UNIQUE)
+#counters (counter text UNIQUE, count integer)
+#casino (outcome string UNIQUE, bets string)
+
+
+class MyClient(Client):
+    def __init__(self, queue, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.queue = queue
+        self.voice_queue = Queue()
+        self.song_queue = Queue()
+        self.next_song = None
+        self.voice_block = False
+        self.db = connect(DATABASE_PATH)
+        self.c = None
+        self.vc = {}
+        self.connected = False
+        self.play_text = " is anyone interested in playing"
+        self.yes_role_id = 757388821540372561
+        self.no_role_id = 757389176449531954
+        self.initiate_role_id = 759600936435449896
+        self.jeopardy = False
+        self.jeopardy_host = ""
+        self.answered = False
+        self.think_lock = False
+        self.waitlists = {"overwatch gang": [],
+                            "civ gang": [],
+                            "among us gang": [],
+                            "league gang": [],
+                            "tft gang": [],
+                            "warcraft gang": [],
+                            "minecraft gang": []}
+
+        # create the background task and run it in the background
+        # self.bg_task = self.loop.create_task(self.my_background_task())
+
+    async def on_ready(self):
+        await self.change_presence(activity = Game(name='!help'))
+        print('Logged on as', self.user)
+
+        # dojo = self.get_guild(578065102310342677)
+        # general = self.get_channel(578065102310342679)
+        self.c = self.db.cursor()
+        try:
+            self.conn, self.addr = start()
+            send(self.conn, "Client:discord")
+            self.connected = True
+        except:
+            pass
+        try:
+            self.jukebox.start()
+            self.robin_STT.start()
+            self.braincell_swap.start()
+            self.posture_check.start()
+            self.check_datetime.start()
+        except:
+            self.jukebox.restart()
+            self.robin_STT.restart()
+            self.braincell_swap.restart()
+            self.posture_check.restart()
+            self.check_datetime.restart()
+
+    async def on_message(self, message):
+        # don't respond to ourselves
+        if message.author == self.user:
+            return
+
+
+        elif message.content.startswith('!execute'):
+            if str(message.author) == 'nickeick#9008':
+                # execute1 = ("MeltingSnowman#1699", 9)
+                # c.execute("REPLACE INTO braincell_points (name, points) VALUES (?, ?)", execute1)
+                # db.commit()
+                # c.execute("SELECT * FROM braincell_points")
+                # items = c.fetchall()
+                # for item in items:
+                #     print(item[0] + ": " + str(item[1]))
+                # _select = ("Jax#6424",)
+                # c.execute("SELECT points FROM braincell_points WHERE name=? ", _select)
+                # jax_cents = c.fetchone()
+                # _insert = ("Jaxington#6424", jax_cents[0])
+                # c.execute("INSERT into braincell_points VALUES (?,?)", _insert)
+                # _delete = ("Jax#6424",)
+                # c.execute("DELETE FROM braincell_points WHERE name=?", _delete)
+                # db.commit()
+                print()
+
+
+
+        elif message.content.startswith('!help'):
+            help_message = message.content.replace('!help', '').strip()
+            if help_message == "gangs":
+                await message.channel.send('''!join - Type !join followed by a role to join that role
+!leave - Type !leave followed by a role to leave that role
+!gangs - Type !gangs to get a complete list of the gang roles in the server''')
+            elif help_message == "braincell":
+                await message.channel.send('''!braincell - Type !braincell to see who has the server brain cell role
+!think - Type !think when you have the braincell role to gain a common cent
+!leaderboard - Type !leaderboard to see who has the most common cents
+!give - Type !give [username/nickname] [number] to give your Common Cents to another member''')
+            elif help_message == "play requests":
+                await message.channel.send('''!play - Type !play in any gang related chat to see if anyone is interested in playing the game. People can react with their availability
+!replay - Type !replay to replay the last !play request
+!yes - Type !yes to see who responded "Yes" to your !play request
+!no - Type !no to see who responded "No" to your !play request
+!reset - Type !reset to reset the yesses and nos to your !play request''')
+            elif help_message == "calendar":
+                await message.channel.send('''!addevent - Type !addevent *event name* mm/dd/yyyy *time* to add an event to the calendar
+!events - Type !events to get a list of outstanding events in the server
+!delevent - Type !delevent to delete an event from the calendar
+!today - Type !today to get the today's events from the calendar (Central Time)
+!calendar - Type !calendar to use the Dojo's calendar''')
+            elif help_message == "misc":
+                await message.channel.send('''!robin - A description of Robin
+!addwaitlist - Type !addwaitlist followed by the name of a role and @ing someone to add them to the waitlist for that game
+!waitlist - Type !waitlist and a role to see who is on that waitlist
+!icon - Type !icon to get the server icon image''')
+            else:
+                await message.channel.send('''Send !help <category> to see the commands pertaining to the category.
+Categories: gangs, braincell, play requests, calendar, misc''')
+
+
+        elif message.content == '!robin':
+            await message.channel.send('Hello! I am a bot created by Nick who can speak on behalf of Nick.')
+
+#---------------- Make Commands -----------------------------
+
+        elif message.content.startswith('!addcom'):
+            for role in message.author.roles:
+                if role.name == "Server Admin":
+                    try:
+                        com_message = message.content.replace('!addcom', '').strip().split(' ', 1)
+                        if com_message[0][0] != '!' or com_message[0] == None or com_message[1] == None:
+                            break
+                        addcom_insert = (com_message[0], com_message[1], str(message.author))
+                        self.c.execute("INSERT INTO commands VALUES (?,?,?)", addcom_insert)
+                        self.db.commit()
+                        await message.channel.send('Made command ' + com_message[0] + ' to send ' + com_message[1])
+                    except:
+                        await message.channel.send('Invalid command')
+
+
+        elif message.content.startswith('!delcom'):
+            for role in message.author.roles:
+                if role.name == "Server Admin":
+                    com_message = message.content.replace('!delcom', '').strip()
+                    delcom_delete = (com_message,)
+                    self.c.execute("DELETE from commands WHERE command_name=?", delcom_delete)
+                    self.db.commit()
+                    await message.channel.send("Deleted " + com_message)
+
+
+        elif message.content.startswith('!commands'):
+            if str(message.author) == 'nickeick#9008':
+                self.c.execute("SELECT command_name from commands")
+                items = list(set(self.c.fetchall()))
+                self.db.commit()
+                for item in items:
+                    await message.channel.send(item[0].strip("('), "))
+
+#-------------------------Play Requests------------------------------------
+
+        elif message.content.startswith('!join'):
+            role_message = message.content.replace('!join', '').strip().lower()
+            if role_message == '':
+                sent = await message.channel.send('''__**React to Join a Role:**__
+Join the Minecraft Gang: <:minecraft:586388193860124673>
+Join the Overwatch Gang: <:overwatch:804144662372810763>
+Join the TFT Gang: <:tft:804146585998065675>
+Join the Civ Gang: <:civ:804144489349251123>
+Join the Warcraft Gang: <:wow:804147220256915466>
+Join the Jackbox Gang: <:jackbox:804146850104999946>
+Join the League Gang: <:leagueoflegends:804146402258714634>
+Join the Movie Night Gang: 🎥
+Join the RuneScape Gang: <:runescape:804148267327684648>
+Join the DND Gang: <:dnd:804147593768206378>
+Join the Chess Gang: <:bishop:804145901630128128>
+Join the Presentation Gang: 🧑‍💼
+Join the Stardew Gang: <:chicken:804147857719951431>''')
+                await sent.add_reaction("<:minecraft:586388193860124673>")
+                await sent.add_reaction("<:overwatch:804144662372810763>")
+                await sent.add_reaction("<:tft:804146585998065675>")
+                await sent.add_reaction("<:civ:804144489349251123>")
+                await sent.add_reaction("<:wow:804147220256915466>")
+                await sent.add_reaction("<:jackbox:804146850104999946>")
+                await sent.add_reaction("<:leagueoflegends:804146402258714634>")
+                await sent.add_reaction("🎥")
+                await sent.add_reaction("<:runescape:804148267327684648>")
+                await sent.add_reaction("<:dnd:804147593768206378>")
+                await sent.add_reaction("<:bishop:804145901630128128>")
+                await sent.add_reaction("🧑‍💼")
+                await sent.add_reaction("<:chicken:804147857719951431>")
+                return
+            for role in message.guild.roles:
+                if role.name.lower() in role_message:
+                    if  ('gang' not in role.name.lower()) or role.name == 'Server Admin' or role.name == 'Donor' or role.name == 'Bots' or role.name == 'Robin Otto' or role.name == "Groovy" or role.name == 'The Server Brain Cell' or role.name == 'Server Genius' or role.name == 'Pingcord':
+                        await message.channel.send('You cannot join this role: ' + role.name)
+                        return
+                    else:
+                        await message.author.add_roles(role)
+                        if role.name == 'Movie Night Gang':
+                            await message.channel.send('*This is an NSFW Gang*')
+                        await message.channel.send('Added ' + message.author.display_name + ' to ' + role.name)
+
+
+        elif message.content.startswith('!leave'):
+            role_message = message.content.replace('!leave', '').strip().lower()
+            if role_message == '':
+                await message.channel.send('Type !leave and role(s) to leave a role')
+                return
+            for role in message.guild.roles:
+                if role.name.lower() in role_message:
+                    if ('gang' not in role.name.lower()) or role.name == 'Server Admin' or role.name == 'Donor' or role.name == 'Bots' or role.name == 'Robin Otto' or role.name == "Groovy":
+                        await message.channel.send('You cannot leave this role: ' + role.name)
+                        return
+                    else:
+                        await message.author.remove_roles(role)
+                        await message.channel.send('Removed ' + message.author.display_name + ' from ' + role.name)
+
+
+        elif message.content.startswith('!play'):
+            for member in message.guild.get_role(self.yes_role_id).members:
+                await member.remove_roles(message.guild.get_role(self.yes_role_id))
+            for member in message.guild.get_role(self.no_role_id).members:
+                await member.remove_roles(message.guild.get_role(self.no_role_id))
+            time = message.content.replace('!play', '')
+            mention = ""
+            channel_name = message.channel.name
+            for letter in channel_name:
+                if letter == "-":
+                    channel_name = channel_name.replace('-', ' ')
+            for role in message.guild.roles:
+                if role.name.lower() == channel_name:
+                    mention = role.mention
+            if mention != "":
+                sent = await message.channel.send(mention + self.play_text + time + "?\n\nYesses:")
+                await sent.add_reaction("✅")
+                await sent.add_reaction("❌")
+                #self.play_messages.append(sent)
+                if time == None:
+                    time = ' '
+                play_sql = (message.channel.name, time, '', '', str(message.author))
+                # self.c.execute("REPLACE INTO play_requests (game, time, yes, no, requestor) VALUES (?,?,?,?,?)", play_sql)
+                # self.db.commit()
+            else:
+                await message.channel.send("You can only send this command in a gang chat")
+
+
+        elif message.content.startswith('!replay'):
+            time = message.content.replace('!replay', '')
+            mention = ""
+            channel_name = message.channel.name
+            for letter in channel_name:
+                if letter == "-":
+                    channel_name = channel_name.replace('-', ' ')
+            for role in message.guild.roles:
+                if role.name.lower() == channel_name:
+                    mention = role.mention
+            if mention != "":
+                sent = await message.channel.send(mention + self.play_text + time + "?\n\nYesses:")
+                await sent.add_reaction("✅")
+                await sent.add_reaction("❌")
+                replay_select = (message.channel.name,)
+                self.c.execute("SELECT yes FROM play_requests WHERE game=?", replay_select)
+                yes_list = self.c.fetchone()
+                self.db.commit()
+                for name in yes_list[0].split():
+                    user = message.guild.get_member_named(name)
+                    if user == None:
+                        pass
+                    else:
+                        await user.add_roles(message.guild.get_role(self.yes_role_id))
+                        await sent.edit(content=sent.content + '\n*' + user.display_name + '*')
+
+
+        elif message.content.startswith('!reset'):
+            for member in message.guild.get_role(self.yes_role_id).members:
+                await member.remove_roles(message.guild.get_role(self.yes_role_id))
+            for member in message.guild.get_role(self.no_role_id).members:
+                await member.remove_roles(message.guild.get_role(self.no_role_id))
+            await message.channel.send("Removed all YES and NO roles")
+
+
+        elif message.content == '!yes':
+            to_send = 'members said YES:'
+            number = 0
+            for member in message.guild.get_role(self.yes_role_id).members:
+                number += 1
+                to_send += '\n' + member.display_name
+            await message.channel.send(str(number) + ' ' + to_send)
+
+
+        elif message.content == '!no':
+            to_send = 'members said NO:'
+            number = 0
+            for member in message.guild.get_role(self.no_role_id).members:
+                number += 1
+                to_send += '\n' + member.display_name
+            await message.channel.send(str(number) + ' ' + to_send)
+
+#------------------------Waitlists----------------------------------
+
+        elif message.content.startswith('!addwaitlist'):
+            people = []
+            waitlist_message = message.content.replace('!addwaitlist', '').strip().lower()
+            for role in message.guild.roles:
+                if role.name.lower() in waitlist_message:
+                    waitlist_message = waitlist_message.replace(role.name.lower(), '').strip().lower()
+                    waitlist = role.name.lower()
+            for person in message.guild.members:
+                if person.mentioned_in(message):
+                    people.append(person)
+            if people == []:
+                people.append(message.author)
+            to_send = 'These people have been added to the waitlist for ' + waitlist + ':'
+            for person in people:
+                to_send += '\n' + person.display_name
+                try:
+                    self.waitlists[waitlist].append(person)
+                except:
+                    self.waitlists[waitlist] = []
+                    self.waitlists[waitlist].append(person)
+            await message.channel.send(to_send)
+
+
+        elif message.content.startswith('!waitlist'):
+            waitlist = message.content.replace('!waitlist', '').strip().lower()
+            to_send = 'These people are on the waitlist for ' + waitlist + ':'
+            for person in self.waitlists[waitlist]:
+                to_send += '\n' + person.display_name
+            await message.channel.send(to_send)
+
+#--------------------Jeopardy-----------------------------------------
+
+        elif message.content.startswith('!jeopardy'):
+            if message.content.replace('!jeopardy', '').strip().lower() == "start":
+                self.jeopardy = True
+                self.jeopardy_host = message.author.name
+                await message.channel.send("A game of Jeopardy has started")
+            elif message.content.replace('!jeopardy', '').strip().lower() == "stop":
+                self.jeopardy = False
+                self.jeopardy_host = ""
+                await message.channel.send("Jeopardy has ended")
+
+
+        elif message.content.startswith('buzz'):
+            if self.jeopardy == True:
+                if self.answered == False:
+                    self.answered = True
+                    await message.add_reaction("✅")
+                    await message.add_reaction("❌")
+                elif self.answered == True:
+                    await message.delete()
+
+#------------------------Gang Stuff-----------------------------
+
+        elif message.content.startswith('!makegang'):
+            for role in message.author.roles:
+                if role.name == "Server Admin":
+                    gang = message.content.replace('!makegang', '').strip().replace('gang', '')
+                    new_role = await message.guild.create_role(name=gang + " Gang")
+                    overwrites = {message.guild.default_role: PermissionOverwrite(read_messages=False),
+                                    new_role: PermissionOverwrite(read_messages=True)}
+                    await message.guild.create_text_channel(name=gang + "-gang", overwrites=overwrites, category=message.guild.get_channel(579796688420732949))
+                    await message.channel.send(gang + ' Gang has been made! Type "!join ' + gang + ' Gang" to join')
+
+
+        elif message.content.startswith('!gangs'):
+            #to_send = '''Among Us Gang\nCiv Gang\nJackbox Gang\nLeague Gang\nMinecraft Gang\nMovie Night Gang\nOverwatch Gang\nParody Gang\nTFT Gang\nWarcraft Gang'''
+            to_send = 'The Gangs:'
+            for role in message.guild.roles:
+                if "Gang" in role.name:
+                    to_send += '\n' + role.name
+            await message.channel.send(to_send)
+
+
+        elif message.content.startswith('!roles'):
+            sent = await message.channel.send('''__**React to Join a Role:**__
+Join the Minecraft Gang: <:minecraft:586388193860124673>
+Join the Overwatch Gang: <:overwatch:804144662372810763>
+Join the TFT Gang: <:tft:804146585998065675>
+Join the Civ Gang: <:civ:804144489349251123>
+Join the Warcraft Gang: <:wow:804147220256915466>
+Join the Jackbox Gang: <:jackbox:804146850104999946>
+Join the League Gang: <:leagueoflegends:804146402258714634>
+Join the Movie Night Gang: 🎥
+Join the Among Us Gang: <:amongus:754595623415578665>
+Join the RuneScape Gang: <:runescape:804148267327684648>
+Join the DND Gang: <:dnd:804147593768206378>
+Join the Chess Gang: <:bishop:804145901630128128>
+Join the Presentation Gang: 🧑‍💼
+Join the Stardew Gang: <:chicken:804147857719951431>
+''')
+            await sent.add_reaction("<:minecraft:586388193860124673>")
+            await sent.add_reaction("<:overwatch:804144662372810763>")
+            await sent.add_reaction("<:tft:804146585998065675>")
+            await sent.add_reaction("<:civ:804144489349251123>")
+            await sent.add_reaction("<:wow:804147220256915466>")
+            await sent.add_reaction("<:jackbox:804146850104999946>")
+            await sent.add_reaction("<:leagueoflegends:804146402258714634>")
+            await sent.add_reaction("🎥")
+            await sent.add_reaction("<:amongus:754595623415578665>")
+            await sent.add_reaction("<:runescape:804148267327684648>")
+            await sent.add_reaction("<:dnd:804147593768206378>")
+            await sent.add_reaction("<:bishop:804145901630128128>")
+            await sent.add_reaction("🧑‍💼")
+            await sent.add_reaction("<:chicken:804147857719951431>")
+
+#------------------------The Braincell-----------------------------
+
+        elif message.content.startswith('!braincell'):
+            for member in message.guild.members:
+                if message.guild.get_role(771408034957623348) in member.roles:
+                    await message.channel.send(member.display_name + ' is hogging the server brain cell')
+
+
+        elif message.content.startswith('!think'):      #common cents
+            if message.guild.get_role(771408034957623348) in message.author.roles:
+                if self.think_lock == False:
+                    await message.channel.send("🧠 This makes cents 🪙")
+                    think_select = (str(message.author),)
+                    self.c.execute("SELECT points FROM braincell_points WHERE name=?", think_select)
+                    points = self.c.fetchone()
+                    #print(points)
+                    if points == None:
+                        think_replace = (str(message.author), 1)
+                    else:
+                        think_replace = (str(message.author), points[0]+1)
+                    self.c.execute("REPLACE INTO braincell_points (name, points) VALUES (?, ?)", think_replace)
+                    for member in message.guild.members:        # Server Genius
+                        if message.guild.get_role(779433226560864267) in member.roles:
+                            await member.remove_roles(message.guild.get_role(779433226560864267))
+                    self.c.execute("SELECT name FROM braincell_points ORDER BY points DESC")
+                    genius_name = self.c.fetchone()
+                    genius_member = message.guild.get_member_named(genius_name[0])
+                    await genius_member.add_roles(message.guild.get_role(779433226560864267))
+                    self.db.commit()
+                    self.think_lock = True
+                else:
+                    await message.channel.send("You've already got your cent <:bonk:772161497031507968>")
+            else:
+                await message.channel.send("You don't have the brain cell <:bonk:772161497031507968>")
+
+
+        elif message.content.startswith('!leaderboard'):
+            self.c.execute("SELECT * FROM braincell_points ORDER BY points DESC")
+            items = self.c.fetchall()
+            self.db.commit()
+            to_send = '🪙  **Common Cents Leaderboard:**  🪙\n'
+            j = 0
+            for item in items:
+                j+=1
+                if j > 10:
+                    break
+                try:
+                    name = message.guild.get_member_named(item[0]).display_name
+                except AttributeError:
+                    j-=1
+                    continue
+                to_send += str(j) + '. ' + name + ':'
+                i = len(name)*2
+                while i < 60:
+                    to_send += ' '
+                    i+=1
+                cents = item[1]
+                while cents > 0:
+                    if (cents//100) > 0:
+                        to_send += '💎'
+                        cents -= 100
+                    elif (cents//10) > 0:
+                        to_send += '💵'
+                        cents -= 10
+                    else:
+                        to_send += '🪙'
+                        cents -= 1
+                to_send += '|   ' + str(item[1]) + '\n'
+            sent = await message.channel.send(to_send)
+            await sent.add_reaction("⬅️")
+            await sent.add_reaction("➡️")
+
+
+        elif message.content.startswith('!atme'):
+            await message.channel.send("Ashe, Erik, Corbin, Nick, Katie, Cole, Casey, Hanray, Snowman, Sarah, Firebox, Jaxington, Kittycat7070, Miskat, Justin (Joosbox), Arpan (OneaUsix), Stephen, Adam (tiggie), Skyler (SkyDwag), Nessa (NoodleGal) (Parker has offered to give you the cent if you @ him)")
+
+
+        elif message.content.startswith('!give'):
+            give_message = message.content.replace('!give', '').strip()
+            print(give_message)
+            try:
+                give_re = search(r'(.+) (\d+)', give_message)
+                if not give_re:
+                    raise TypeError(give_message + ' has improper format')
+                give = (give_re.group(1), give_re.group(2))
+                if message.guild.get_member_named(give[0]) == None:
+                    raise ValueError("Member does not exist")
+                author_select = (str(message.author),)
+                self.c.execute('SELECT points FROM braincell_points WHERE name=?', author_select)
+                author_points = self.c.fetchone()
+                receive_select = (str(message.guild.get_member_named(give[0])),)
+                self.c.execute('SELECT points FROM braincell_points WHERE name=?', receive_select)
+                receive_points = self.c.fetchone()
+                if author_points == None:
+                    raise ValueError("You have no Common Cents")
+                if author_points[0] < int(give[1]):
+                    raise ValueError("You do not have enough Common Cents to give")
+                if int(give[1]) < 0:
+                    raise ValueError("You cannot gift negative points")
+                if str(message.author) == str(message.guild.get_member_named(give[0])):
+                    raise ValueError("You cannot gift to yourself")
+                author_replace = (str(message.author), author_points[0]-int(give[1]))
+                self.c.execute("REPLACE INTO braincell_points (name, points) VALUES (?, ?)", author_replace)
+                if receive_points == None:
+                    receive_replace = (str(message.guild.get_member_named(give[0])), int(give[1]))
+                else:
+                    receive_replace = (str(message.guild.get_member_named(give[0])), receive_points[0]+int(give[1]))
+                self.c.execute("REPLACE INTO braincell_points (name, points) VALUES (?, ?)", receive_replace)
+                self.db.commit()
+                await message.channel.send("You have given " + give[1] + " Common Cents to " + give[0])
+            except TypeError:
+                await message.channel.send("If you want to gift your Common Cents, be sure to type !give {nickname/username} {number}")
+            except ValueError as err:
+                await message.channel.send(err)
+
+
+
+#--------------------------Events Calendar-----------------------------
+
+        elif message.content.startswith('!addevent'):
+            event_message = message.content.replace('!addevent', '').strip()
+            try:
+                date_re = search(r'(.+) (\d\d)/(\d\d)/(\d\d\d\d) ((\d){1,2}:\d\d(am|pm))(.*)', event_message)
+                if not date_re:
+                    raise ValueError(event_message + ' does not have name, date, time')
+                if date_re.group(5)[0] == '0':
+                    raise ValueError(event_message + ' Invalid format: includes 0 at beginning of hour')
+                if date_re.group(8) == '':
+                    gang_insert = 'none'
+                else:
+                    gang_insert = date_re.group(8).strip().lower()
+                addevent_insert = (date_re.group(1).strip(), date_re.group(4), date_re.group(2), date_re.group(3), date_re.group(5), gang_insert)
+                self.c.execute('INSERT INTO calendar VALUES (?,?,?,?,?,?)', addevent_insert)
+                self.db.commit()
+                await message.channel.send("You have added " + date_re.group(1).strip() +" on "+ date_re.group(2) +"/"+ date_re.group(3) +"/"+ date_re.group(4) +" at "+ date_re.group(5) + " to the Calendar")
+            except:
+                await message.channel.send("To make an event, type !addevent *event name* mm/dd/yyyy (H)H:MM*am/pm* *gang (optional)*")
+
+
+        elif message.content.startswith('!events'):
+            self.c.execute("SELECT * FROM calendar ORDER BY year DESC, month DESC, day DESC")
+            items = self.c.fetchall()
+            to_send = ''
+            for item in items:
+                to_send += (item[0] +' on '+ str(item[2]) +'/'+ str(item[3]) +'/'+ str(item[1]) +' at '+ item[4])
+                if item[5]:
+                    to_send += (' in ' + item[5] + '\n')
+                else:
+                    to_send += '\n'
+            if not to_send:
+                await message.channel.send("There are no events on the calendar")
+            else:
+                await message.channel.send(to_send)
+
+
+        elif message.content.startswith('!delevent'):
+            event_message = message.content.replace('!delevent', '').strip()
+            self.c.execute("SELECT * FROM calendar")
+            before_num = len(self.c.fetchall())
+            delevent_delete = (event_message,)
+            self.c.execute("DELETE FROM calendar WHERE event_name=?", delevent_delete)
+            self.db.commit()
+            self.c.execute("SELECT * FROM calendar")
+            after_num = len(self.c.fetchall())
+            if before_num - after_num >= 1:
+                await message.channel.send("Successfully deleted " + event_message + " event")
+            else:
+                await message.channel.send("No such event exists, be sure to type !delevent *event name*")
+
+
+        elif message.content.startswith("!thisweek"):
+            pass
+
+
+        elif message.content.startswith("!today"):
+            await message.channel.send("Today's events are:")
+            today = date.today()
+            month = today.strftime("%m")
+            day = today.strftime("%d")
+            year = today.strftime("%Y")
+            today_select = (month, day, year)
+            self.c.execute("SELECT event_name, time, gang FROM calendar WHERE month = ? AND day = ? AND year = ?", today_select)
+            items = self.c.fetchall()
+            to_send = ''
+            for item in items:
+                to_send += (item[0] + ' at ' + item[1])
+                if item[2]:
+                    to_send += (' in ' + item[2] + '\n')
+                else:
+                    to_send += '\n'
+            if to_send:
+                await message.channel.send(to_send)
+
+
+        elif message.content.startswith("!tomorrow"):
+            await message.channel.send("Tomorrow's events are:")
+            tomorrow = date.today() + timedelta(days=1)
+            month = tomorrow.strftime("%m")
+            day = tomorrow.strftime("%d")
+            year = tomorrow.strftime("%Y")
+            tomorrow_select = (month, day, year)
+            self.c.execute("SELECT event_name, time, gang FROM calendar WHERE month = ? AND day = ? AND year = ?", tomorrow_select)
+            items = self.c.fetchall()
+            to_send = ''
+            for item in items:
+                to_send += (item[0] + ' at ' + item[1])
+                if item[2]:
+                    to_send += (' in ' + item[2] + '\n')
+                else:
+                    to_send += '\n'
+            if to_send:
+                await message.channel.send(to_send)
+
+
+        elif message.content.startswith("!calendar"):
+            today = date.today()
+            to_send = "**The Dojo Calendar** on the week of *" + str(today) + "*\n"   #year - month - day
+            day_num = today.isoweekday()
+            counter = 0
+            dailys = []
+            self.c.execute("SELECT event_name, time, gang FROM calendar")
+            items = self.c.fetchall()
+            for item in items:
+                if "daily" in item[0].lower():
+                    dailys += (item[0], item[1], item[2])
+            days_of_the_week = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
+            for day in days_of_the_week:
+                to_send += "__" + day + "__\n"
+                dayofweek = today - timedelta(days=day_num) + timedelta(days=counter)
+                month = dayofweek.strftime("%m")
+                day = dayofweek.strftime("%d")
+                year = dayofweek.strftime("%Y")
+                calendar_select = (month, day, year)
+                self.c.execute("SELECT event_name, time, gang FROM calendar WHERE month = ? AND day = ? AND year = ?", calendar_select)
+                get_items = self.c.fetchall()
+                get_items.append(dailys)
+                # items = [['None', 'None', 'None']]
+                # for i in get_items:         #removes duplicates
+                #     append_bool = True
+                #     for item in items:
+                #         print("i[0]:" + i[0])
+                #         print("i[1]:" + i[1])
+                #         print("i[2]:" + i[2])
+                #         print("item[0]:" + item[0])
+                #         print("item[1]:" + item[1])
+                #         print("item[2]:" + item[2])
+                #         if i[0] == item[0] and i[1] == item[1] and i[2] == item[2]:
+                #             append_bool = False
+                #     if append_bool == True:
+                #         items.append(i)
+                for item in get_items:
+                    if item != []:
+                        to_send += item[0] + ' at ' + item[1]
+                        if item[2]:
+                            to_send += ' (' + item[2] + ')'
+                        to_send += '\n'
+                counter += 1
+                to_send += '\n'
+            sent = await message.channel.send(to_send)
+            await sent.add_reaction("⬅️")
+            await sent.add_reaction("➡️")
+            await sent.add_reaction("➕")
+            await sent.add_reaction("➖")
+
+#--------------------------Gambling-----------------------------------
+
+
+        elif message.content.startswith("!casino"):
+            self.c.execute('SELECT outcome, bets FROM casino')
+            outcomes = self.c.fetchall()
+            to_send = "🤑 **Common Cent Casino** 🤑\n\n"
+            to_send += "__*Current Odds*__"
+            for outcome in outcomes:
+                out_cents = 0
+                to_send += '\n' + str(outcome[0]) + ': '
+                if outcome[1] != '':
+                    to_parse = str(outcome[1])
+                    to_parse = to_parse.split(',')     #parse the ledger
+                    cents = 0
+                    for item in to_parse:
+                        if '#' not in item:
+                            cents += int(item.strip('( )'))
+                    out_cents = cents
+                    while cents > 0:
+                        if (cents//100) > 0:
+                            to_send += '💎'
+                            cents -= 100
+                        elif (cents//10) > 0:
+                            to_send += '💵'
+                            cents -= 10
+                        else:
+                            to_send += '🪙'
+                            cents -= 1
+                to_send += '|   ' + str(out_cents)
+            await message.channel.send(to_send)
+
+
+        elif message.content.startswith("!gamble"):
+            if str(message.author) == 'nickeick#9008':
+                gamble_messages = message.content.replace('!gamble', '').strip().split(',')
+                self.c.execute('DELETE FROM casino')
+                for outcome in gamble_messages:
+                    gamble_insert = (outcome.strip(), '')
+                    self.c.execute('INSERT INTO casino VALUES (?,?)', gamble_insert)
+                self.db.commit()
+                await message.channel.send("Casino has set new bets!")
+
+
+        elif message.content.startswith("!bet"):
+            bet_message = message.content.replace('!bet', '').strip()
+            self.c.execute("SELECT outcome FROM casino")
+            outcomes = self.c.fetchall()
+            value_updated = False
+            for outcome in outcomes:
+                if str(outcome[0]) in bet_message:
+                    value = outcome[0]
+                    value_updated = True
+                    pass
+            try:
+                if value_updated == False:
+                    raise ValueError(value + "is not a valid bet outcome")
+                num = int(bet_message.replace(value, '').strip())
+                bet_select = (value,)
+                self.c.execute("SELECT bets FROM casino WHERE outcome=?", bet_select)
+                ledger = self.c.fetchone()
+                bet = (str(message.author), num)
+                if ledger[0] == '':
+                    bet_replace = (value, str(bet))
+                else:
+                    bet_replace = (value, ledger[0] + ',' + str(bet))         #add the bet to the end of the ledger
+                author_select = (str(message.author),)
+                self.c.execute("SELECT points FROM braincell_points WHERE name=?", author_select)
+                author_points = self.c.fetchone()
+                robin_select = ("Robin Otto#7657",)
+                self.c.execute("SELECT points FROM braincell_points WHERE name=?", robin_select)
+                robin_points = self.c.fetchone()
+                if author_points[0] < num:
+                    raise ValueError("User bet more points than they had")
+                subtract_replace = (str(message.author), author_points[0] - num)
+                self.c.execute("REPLACE INTO braincell_points VALUES (?,?)", subtract_replace)
+                robin_replace = ("Robin Otto#7657", robin_points[0] + num)
+                self.c.execute("REPLACE INTO braincell_points VALUES (?,?)", robin_replace)
+                self.c.execute("REPLACE INTO casino VALUES (?,?)", bet_replace)
+                self.db.commit()
+                await message.channel.send("Your bet has been placed")
+            except Exception as error:
+                await message.channel.send("Be sure to type !bet, the name of the bet in the !casino and the number of Common Cents that you want to bet. Warning: You can't take your bet back.")
+
+
+        elif message.content.startswith("!payout"):
+            if str(message.author) == 'nickeick#9008':
+                try:
+                    payout_message = message.content.replace('!payout', '').strip()
+                    self.c.execute('SELECT outcome, bets FROM casino')
+                    outcomes = self.c.fetchall()
+                    winners = {}
+                    cents = 0
+                    winner_bool = False
+                    for outcome in outcomes:
+                        ledger = str(outcome[1])
+                        ledger = ledger.split(',')                  #parse the ledger
+                        if outcome[0] != payout_message:            #losers
+                            for item in ledger:
+                                if '#' not in item:
+                                    try:
+                                        cents += int(item.strip('( )'))
+                                    except:
+                                        cents += 0
+                        else:                                       #winners
+                            while len(ledger) > 0:
+                                item = ledger[0]
+                                if '#' in item:
+                                    if item.strip("( )''") in winners.keys():
+                                        winners[item.strip("( )''")] += int(ledger[1].strip('( )'))
+                                        ledger.pop(0)
+                                        ledger.pop(0)
+                                    else:
+                                        winners[item.strip("( )''")] = int(ledger[1].strip('( )'))
+                                        ledger.pop(0)
+                                        ledger.pop(0)
+                            winner_bool = True
+                    if winner_bool == False:
+                        raise ValueError(payout_message + " is not a valid input")
+                    if winners == {}:                                   #if there are no winners
+                        losers = {}
+                        for outcome in outcomes:
+                            ledger = str(outcome[1])
+                            ledger = ledger.split(',')                  #parse the ledger
+                            if outcome[0] != payout_message:            #losers
+                                while len(ledger) > 0:
+                                    item = ledger[0]
+                                    if '#' in item:                     #if the item is a username
+                                        if item.strip("( )''") in losers.keys():
+                                            losers[item.strip("( )''")] += int(ledger[1].strip('( )'))
+                                            ledger.pop(0)
+                                            ledger.pop(0)
+                                        else:
+                                            losers[item.strip("( )''")] = int(ledger[1].strip('( )'))
+                                            ledger.pop(0)
+                                            ledger.pop(0)
+                        for key in losers.keys():
+                            robin_points_old_select = ("Robin Otto#7657",)
+                            self.c.execute("SELECT points FROM braincell_points WHERE name=?", robin_points_old_select)
+                            robin_points_old = self.c.fetchone()
+                            robin_points_new = ("Robin Otto#7657", robin_points_old[0] - losers[key])
+                            self.c.execute("REPLACE INTO braincell_points VALUES (?,?)", robin_points_new)           #take cents from Robin
+
+                            loser_select = (key,)
+                            self.c.execute("SELECT points FROM braincell_points WHERE name=?", loser_select)
+                            loser_cents = self.c.fetchone()
+                            new_loser_cents = (key, loser_cents[0] + losers[key])
+                            self.c.execute("REPLACE INTO braincell_points VALUES (?,?)", new_loser_cents)
+                            await message.channel.send(message.guild.get_member_named(key).display_name + " you were given your " + str(losers[key]) + " cents back")
+                        await message.channel.send("Nobody wins, your cents have been returned.")
+                    else:
+                        winners_total = 0
+                        winners_ratio = dict(reversed(sorted(winners.items(), key=lambda item: item[1])))         #sorts in value order
+                        winners_payout = winners_ratio.copy()
+                        for value in winners_ratio.values():
+                            winners_total += int(value)
+                        for key in winners_ratio.keys():
+                            winners_ratio[key] = winners_ratio[key]/winners_total       #turn winners_ratio into a ratio of winner cents to total winner cents
+                        old_cents = cents
+                        while cents > 0:                                                #cents distribution algorithm
+                            changed_bool = False
+                            for key in winners_ratio.keys():
+                                if cents <= 0:
+                                    break
+                                if winners_payout[key]/(winners_total + (old_cents - cents))  < winners_ratio[key]:
+                                    winners_payout[key] += 1
+                                    cents -= 1
+                                    changed_bool = True
+                            if changed_bool == False:
+                                for key in winners_payout.keys():
+                                    winners_payout[key] += 1
+                                    cents -= 1
+                                    break
+                        for key in winners_payout.keys():
+                            robin_points_old_select = ("Robin Otto#7657",)
+                            self.c.execute("SELECT points FROM braincell_points WHERE name=?", robin_points_old_select)
+                            robin_points_old = self.c.fetchone()
+                            robin_points_new = ("Robin Otto#7657", robin_points_old[0] - winners_payout[key])
+                            self.c.execute("REPLACE INTO braincell_points VALUES (?,?)", robin_points_new)           #remove points from Robin
+
+                            winner_select = (key,)
+                            self.c.execute("SELECT points FROM braincell_points WHERE name=?", winner_select)
+                            winner_cents = self.c.fetchone()
+                            new_winner_cents = (key, winner_cents[0] + winners_payout[key])
+                            self.c.execute("REPLACE INTO braincell_points VALUES (?,?)", new_winner_cents)
+                            await message.channel.send("Congrats " + message.guild.get_member_named(key).display_name + "! You won " + str(winners_payout[key] - winners[key]) + " Common Cents (plus your original bet of " + str(winners[key]) + ")")
+                    self.c.execute("DELETE FROM casino")
+                    self.db.commit()
+                except Exception as error:
+                    await message.channel.send('There was an error in paying out the bets: ' + str(error))
+
+
+#---------------------------Presentation Gang-------------------------
+
+        elif message.content.startswith("!presnight"):
+            await message.channel.send('''What is Presentation night? Answer: It is a night where presenters show off presentations that they made themselves
+How do I get added to the list? Answer: Just type !presenter in the #music-requests-and-bot-commands channel
+What should my presentation be on? Answer: It can be on whatever you want, but there are optional themes every month
+When is it? How often is it? Where can I learn more? Answer: Check #announcements for up to date information''')
+
+#--------------------------Poll---------------------------------------
+
+        elif message.content.startswith("!poll"):
+            try:
+                poll_message = message.content.replace('!poll', '').strip()
+                poll_re = search(r'((.+):(.+),)+((.+):(.+))', poll_message)
+                if not poll_re:
+                    raise ValueError(poll_message + " doesn't work for a poll")
+                to_send = message.author.display_name + " made a poll:"
+                emojis = []
+                for item in poll_re.groups():
+                    if ':' in item:
+                        pair = item.strip(',').split(':')
+                        to_send += '\n' + pair[0] + ' (' + pair[1] + '):'
+                        emojis.append(pair[1])
+                sent = await message.channel.send(to_send)
+                for emoji in emojis:
+                    await sent.add_reaction(emoji)
+                    self.c.execute("REPLACE INTO emojis (emoji) VALUES (?)", emoji)
+            except ValueError:
+                await message.channel.send("Be sure to type !poll {option}:{emoji}, {option}:{emoji}, etc. (Don't forget to remove spaces)")
+
+#--------------------------Voice--------------------------------------
+
+        elif message.content.startswith("!connect"):
+            await self.vc_connect(message)
+
+        elif message.content.startswith("!disconnect"):
+            await self.vc_disconnect(message)
+
+        elif message.content.startswith("!say"):
+            say_content = message.content.replace("!say", '').strip()
+            send(self.conn, "Send to:voice " + say_content)
+            if self.voice_block == True:
+                self.voice_queue.put(message)
+            else:
+                await self.vc_say(message)
+
+        elif message.content.startswith("!sing"):
+            url = message.content.replace("!sing", '').strip()
+
+            if message.author.voice != None:
+                try:
+                    await self.vc_connect(message)
+                except:
+                    pass
+            channel_id = str(message.author.voice.channel.id)
+
+            self.song_queue.put((url,channel_id))
+
+        elif message.content.startswith('!skip'):
+            try:
+                channel_id = str(message.author.voice.channel.id)
+            except:
+                await message.channel.send("You are not in a voice channel")
+            try:
+                voice = self.vc[channel_id]
+            except:
+                await message.channel.send("Robin is not connected to your voice channel")
+            voice.stop()
+            await message.channel.send("Skipping song...")
+
+        elif message.content.startswith('!pause'):
+            try:
+                channel_id = str(message.author.voice.channel.id)
+            except:
+                await message.channel.send("You are not in a voice channel")
+            try:
+                voice = self.vc[channel_id]
+            except:
+                await message.channel.send("Robin is not connected to your voice channel")
+            if voice.is_playing():
+                voice.pause()
+            else:
+                await message.channel.send("No audio is playing")
+
+        elif message.content.startswith('!resume'):
+            try:
+                channel_id = str(message.author.voice.channel.id)
+            except:
+                await message.channel.send("You are not in a voice channel")
+            try:
+                voice = self.vc[channel_id]
+            except:
+                await message.channel.send("Robin is not connected to your voice channel")
+            if voice.is_paused():
+                voice.resume()
+            else:
+                await message.channel.send("No audio is paused")
+
+        elif message.content.startswith('!upnext'):
+            if self.next_song == None:
+                await message.channel.send("There is no queued song")
+            else:
+                await message.channel.send(self.next_song[0])
+
+
+#--------------------------Misc---------------------------------------
+
+        elif message.content.startswith('!whenjoin'):
+            await message.channel.send(message.author.joined_at)
+
+        elif message.content.startswith('!nicksleep'):
+            self.c.execute("SELECT count FROM counters WHERE counter = ?", ("nick_sleep",))
+            nick_sleep = self.c.fetchone()
+            times = nick_sleep[0] + 1
+            await message.channel.send("Nick has fallen asleep in the Dojo " + str(times) + " times")
+            self.c.execute("REPLACE INTO counters (counter, count) VALUES (?, ?)", ("nick_sleep", times))
+            self.db.commit()
+
+        elif message.content.startswith("I'm "):
+            if message.guild.id == 578065102310342677:
+                message_content = message.content.replace("I'm ", '').strip()
+                await message.channel.send("Hi " + message_content + ", I'm Robin")
+
+
+        elif "thank you robin" in message.content.lower():
+            await message.channel.send("You're welcome")
+
+        elif "this is so sad" in message.content.lower():
+            await self.vc_connect(message)
+            try:
+                channel_id = str(message.author.voice.channel.id)
+                self.song_queue.put(('https://www.youtube.com/watch?v=Gl6ekgobG2k&ab_channel=ReptileLegitYT',channel_id))
+            except:
+                pass
+
+        elif "goodnight girl" in message.content.lower():
+            await self.vc_connect(message)
+            try:
+                channel_id = str(message.author.voice.channel.id)
+                self.song_queue.put(('https://www.youtube.com/watch?v=ykLDTsfnE5A&ab_channel=J7ck2',channel_id))
+            except:
+                pass
+
+        elif message.content.startswith('!icon'):
+            await message.channel.send("", file=File("dojo.png"))
+
+
+        elif message.content.startswith('!gibby'):
+            await message.channel.send("<:gibby:760384610696953887>")
+
+
+        elif message.content.startswith('!longgibby'):
+            await message.channel.send("", file=File("longgibby.jpg"))
+
+
+        elif message.content.startswith('!widegibby'):
+            await message.channel.send("", file=File("widegibby.jpg"))
+
+
+        elif message.content.startswith('!test'):
+            await message.channel.send("Test Successful")
+
+
+        elif message.content.startswith('!alive'):
+            await message.channel.send("I am alive. - Robin")
+
+        elif message.content.startswith('!'):
+            self.c.execute("SELECT * FROM commands")
+            commands = self.c.fetchall()
+            for command in commands:
+                if message.content == command[0]:
+                    await message.channel.send(command[1])
+            self.db.commit()
+
+#-----------------------------------------------------------------------
+
+    async def on_reaction_add(self, reaction, user):
+        #for !play requests
+        if reaction.message.author == self.user and self.play_text in reaction.message.content and user != self.user:
+            if reaction.emoji == "✅":
+                await user.add_roles(reaction.message.guild.get_role(self.yes_role_id))
+                await reaction.message.edit(content=reaction.message.content + '\n*' + user.display_name + '*')
+                checkmark_select = (reaction.message.channel.name,)
+                self.c.execute("SELECT yes FROM play_requests WHERE game=?", checkmark_select)
+                yes_list = self.c.fetchone()
+                yes_list = yes_list[0] + ' ' + str(user)
+                checkmark_update = (yes_list, reaction.message.channel.name)
+                self.c.execute("UPDATE play_requests SET yes = ? WHERE game = ?", checkmark_update)
+                self.db.commit()
+            if reaction.emoji == "❌":
+                await user.add_roles(reaction.message.guild.get_role(self.no_role_id))
+                xmark_select = (reaction.message.channel.name,)
+                self.c.execute("SELECT no FROM play_requests WHERE game=?", xmark_select)
+                no_list = self.c.fetchone()
+                no_list = no_list[0] + ' ' + str(user)
+                xmark_update = (no_list, reaction.message.channel.name)
+                self.c.execute("UPDATE play_requests SET yes = ? WHERE game = ?", xmark_update)
+                self.db.commit()
+        #for !jeopardy games
+        if reaction.message.content == "buzz" and self.jeopardy == True and self.jeopardy_host == user.name:
+            if reaction.emoji == "✅":
+                await reaction.message.channel.send(reaction.message.author.nick + " got it correct")
+                self.answered = False
+            if reaction.emoji == "❌":
+                await reaction.message.channel.send(reaction.message.author.nick + " got it incorrect")
+                self.answered = False
+        #for !poll
+        if "made a poll:" in reaction.message.content and user != self.user:
+            self.c.execute("SELECT emoji FROM emojis WHERE emoji = ?", str(reaction.emoji))
+            emojis = self.c.fetchall()
+            for emoji in emojis:
+                to_send = ''
+                if emoji[0] in reaction.message.content:
+                    options = reaction.message.content.split(":")
+                    for option in options:
+                        if emoji[0] in option and option[0] != emoji[0]:
+                            to_send = to_send + option + ':' + emoji[0]
+                        else:
+                            to_send = to_send + option + ':'
+                    to_send = to_send[:-1]
+                    await reaction.message.edit(content=to_send)
+        #for !calendar
+        if reaction.message.author == self.user and "The Dojo Calendar" in reaction.message.content and user != self.user:
+            if reaction.emoji == "⬅️":
+                await reaction.remove(user)
+                date_re = search("(.*)(\d\d\d\d)-(\d\d)-(\d\d)(.*)", reaction.message.content)
+                today = date(int(date_re.group(2)), int(date_re.group(3)), int(date_re.group(4))) - timedelta(weeks=1)
+                to_send = "**The Dojo Calendar** on the week of *" + str(today) + "*\n"   #year - month - day
+                day_num = today.isoweekday()
+                counter = 0
+                dailys = []
+                self.c.execute("SELECT event_name, time, gang FROM calendar")
+                items = self.c.fetchall()
+                for item in items:
+                    if "daily" in item[0].lower():
+                        dailys += (item[0], item[1], item[2])
+                days_of_the_week = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
+                for day in days_of_the_week:
+                    to_send += "__" + day + "__\n"
+                    dayofweek = today - timedelta(days=day_num) + timedelta(days=counter)
+                    month = dayofweek.strftime("%m")
+                    day = dayofweek.strftime("%d")
+                    year = dayofweek.strftime("%Y")
+                    calendar_select = (month, day, year)
+                    self.c.execute("SELECT event_name, time, gang FROM calendar WHERE month = ? AND day = ? AND year = ?", calendar_select)
+                    get_items = self.c.fetchall()
+                    get_items.append(dailys)
+                    items = []
+                    for i in get_items:         #removes duplicates
+                        if i != []:
+                            append_bool = True
+                            for item in items:
+                                if item != []:
+                                    if i[0] == item[0] and i[1] == item[1] and i[2] == item[2]:
+                                        append_bool = False
+                            if append_bool == True:
+                                items.append(i)
+                    for item in items:
+                        if item != []:
+                            to_send += item[0] + ' at ' + item[1]
+                            if item[2]:
+                                to_send += ' (' + item[2] + ')'
+                            to_send += '\n'
+                    counter += 1
+                    to_send += '\n'
+                await reaction.message.edit(content=to_send)
+            if reaction.emoji == "➡️":
+                await reaction.remove(user)
+                date_re = search("(.*)(\d\d\d\d)-(\d\d)-(\d\d)(.*)", reaction.message.content)
+                today = date(int(date_re.group(2)), int(date_re.group(3)), int(date_re.group(4))) + timedelta(weeks=1)
+                to_send = "**The Dojo Calendar** on the week of *" + str(today) + "*\n"   #year - month - day
+                day_num = today.isoweekday()
+                counter = 0
+                dailys = []
+                self.c.execute("SELECT event_name, time, gang FROM calendar")
+                items = self.c.fetchall()
+                for item in items:
+                    if "daily" in item[0].lower():
+                        dailys += (item[0], item[1], item[2])
+                days_of_the_week = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
+                for day in days_of_the_week:
+                    to_send += "__" + day + "__\n"
+                    dayofweek = today - timedelta(days=day_num) + timedelta(days=counter)
+                    month = dayofweek.strftime("%m")
+                    day = dayofweek.strftime("%d")
+                    year = dayofweek.strftime("%Y")
+                    calendar_select = (month, day, year)
+                    self.c.execute("SELECT event_name, time, gang FROM calendar WHERE month = ? AND day = ? AND year = ?", calendar_select)
+                    get_items = self.c.fetchall()
+                    get_items.append(dailys)
+                    items = []
+                    for i in get_items:         #removes duplicates
+                        if i != []:
+                            append_bool = True
+                            for item in items:
+                                if item != []:
+                                    if i[0] == item[0] and i[1] == item[1] and i[2] == item[2]:
+                                        append_bool = False
+                            if append_bool == True:
+                                items.append(i)
+                    for item in items:
+                        if item != []:
+                            to_send += item[0] + ' at ' + item[1]
+                            if item[2]:
+                                to_send += ' (' + item[2] + ')'
+                            to_send += '\n'
+                    counter += 1
+                    to_send += '\n'
+                await reaction.message.edit(content=to_send)
+                #print("next week")
+            if reaction.emoji == "➕":
+                timeout_bool = False
+                components = ["*event name*", "mm/dd/yyyy", "(H)H:MM*am/pm*", '*gang (If none, type "none")*']
+                sections = []
+                author = user
+                channel = reaction.message.channel
+                def check(msg):
+                    return msg.author == author and msg.channel == channel
+                for section in components:
+                    await reaction.message.channel.send("To add your event, please type the " + section + ":")
+                    try:
+                        response = await self.wait_for('message', check=check, timeout=30)
+                    except TimeoutError:
+                        await reaction.message.channel.send("Event not created (You took too long)")
+                        timeout_bool = True
+                        break
+                    else:
+                        sections.append(response.content)
+                if timeout_bool == False:
+                    date_re = search(r'(\d\d)/(\d\d)/(\d\d\d\d)', sections[1])
+                    time_re = search('((\d){1,2}:\d\d(am|pm))', sections[2])
+                    if not (date_re and time_re):
+                        await reaction.message.channel.send("Invalid date/time")
+                        raise ValueError(sections[0] + ' does not have date or time')
+                    if time_re.group(1)[0] == '0':
+                        await reaction.message.channel.send("Invalid date/time: Included 0 at start of hour")
+                        raise ValueError(event_message + ' Invalid format: includes 0 at beginning of hour')
+                    else:
+                        addevent_insert = (sections[0], date_re.group(3), date_re.group(1), date_re.group(2), time_re.group(0), sections[3])
+                        self.c.execute('INSERT INTO calendar VALUES (?,?,?,?,?,?)', addevent_insert)
+                        self.db.commit()
+                        await reaction.message.channel.send("Successfully added an event to the calendar")
+                await reaction.remove(user)
+            if reaction.emoji == "➖":
+                author = user
+                channel = reaction.message.channel
+                def check(msg):
+                    return msg.author == author and msg.channel == channel
+                await reaction.message.channel.send("To delete an event, please type the *event name*")
+                try:
+                    response = await self.wait_for('message', check=check, timeout=30)
+                except TimeoutError:
+                    await reaction.message.channel.send("Event not deleted (You took too long)")
+                else:
+                    self.c.execute("SELECT * FROM calendar")
+                    before_num = len(self.c.fetchall())
+                    delevent_delete = (response.content,)
+                    self.c.execute("DELETE FROM calendar WHERE event_name=?", delevent_delete)
+                    self.db.commit()
+                    self.c.execute("SELECT * FROM calendar")
+                    after_num = len(self.c.fetchall())
+                    if before_num - after_num >= 1:
+                        await reaction.message.channel.send("Successfully deleted " + response.content + " event")
+                    else:
+                        await reaction.message.channel.send("No such event exists. Try again and be sure to type the *exact* event name (case sensitive)")
+                finally:
+                    await reaction.remove(user)
+
+        #!leaderboard
+        if reaction.message.author == self.user and "Common Cents Leaderboard:" in reaction.message.content and user != self.user:
+            if reaction.emoji == "⬅️":
+                number_test = False
+                for char in reaction.message.content:   #get the number of the last rank
+                    if char == '.':
+                        number_test = False
+                    if number_test:
+                        number += char
+                    if char == '\n':
+                        number = ''
+                        number_test = True
+                if int(number) < 20:
+                    number = 20
+                self.c.execute("SELECT * FROM braincell_points ORDER BY points DESC")
+                items = self.c.fetchall()
+                self.db.commit()
+                to_send = '🪙  **Common Cents Leaderboard:**  🪙\n'
+                j = 0
+                for item in items:
+                    j+=1
+                    if j > int(number) - 10:
+                        break
+                    if j > int(number) - 20:
+                        try:
+                            name = reaction.message.guild.get_member_named(item[0]).display_name
+                        except AttributeError:
+                            j-=1
+                            continue
+                        to_send += str(j) + '. ' + name + ':'
+                        i = len(name)*2
+                        while i < 60:
+                            to_send += ' '
+                            i+=1
+                        cents = item[1]
+                        while cents > 0:
+                            if (cents//100) > 0:
+                                to_send += '💎'
+                                cents -= 100
+                            elif (cents//10) > 0:
+                                to_send += '💵'
+                                cents -= 10
+                            else:
+                                to_send += '🪙'
+                                cents -= 1
+                        to_send += '|   ' + str(item[1]) + '\n'
+                await reaction.message.edit(content=to_send)
+                await reaction.remove(user)
+
+            if reaction.emoji == "➡️":
+                number_test = False
+                for char in reaction.message.content:   #get the number of the last rank
+                    if char == '.':
+                        number_test = False
+                    if number_test:
+                        number += char
+                    if char == '\n':
+                        number = ''
+                        number_test = True
+                self.c.execute("SELECT * FROM braincell_points ORDER BY points DESC")
+                items = self.c.fetchall()
+                self.db.commit()
+                if int(number) + 10 > len(items):
+                    number = len(items) - 10
+                to_send = '🪙  **Common Cents Leaderboard:**  🪙\n'
+                j = 0
+                for item in items:
+                    j+=1
+                    if j > int(number) + 10:
+                        break
+                    if j > int(number):
+                        try:
+                            name = reaction.message.guild.get_member_named(item[0]).display_name
+                        except AttributeError:
+                            j-=1
+                            continue
+                        to_send += str(j) + '. ' + name + ':'
+                        i = len(name)*2
+                        while i < 60:
+                            to_send += ' '
+                            i+=1
+                        cents = item[1]
+                        while cents > 0:
+                            if (cents//100) > 0:
+                                to_send += '💎'
+                                cents -= 100
+                            elif (cents//10) > 0:
+                                to_send += '💵'
+                                cents -= 10
+                            else:
+                                to_send += '🪙'
+                                cents -= 1
+                        to_send += '|   ' + str(item[1]) + '\n'
+                await reaction.message.edit(content=to_send)
+                await reaction.remove(user)
+
+#````````````````````MARKED FOR CLEANUP`````````````````````````
+
+        if reaction.message.author == self.user and "React to Join a Role:" in reaction.message.content and user != self.user:
+            before_roles = len(user.roles)
+            if str(reaction.emoji) == "🎥":
+                if reaction.message.guild.get_role(736618281632268369) not in user.roles:
+                    await user.add_roles(reaction.message.guild.get_role(736618281632268369))   #Movie Night Gang
+                    await reaction.message.channel.send("Added " + user.display_name + " to Movie Night Gang")
+                    await message.channel.send('*This is an NSFW Gang*')
+            elif str(reaction.emoji) == "🧑‍💼":
+                if reaction.message.guild.get_role(799751796281049149) not in user.roles:
+                    await user.add_roles(reaction.message.guild.get_role(799751796281049149))   #Presentation Gang
+                    await reaction.message.channel.send("Added " + user.display_name + " to Presentation Gang")
+            elif reaction.emoji.id == 586388193860124673:
+                if reaction.message.guild.get_role(578065727148523520) not in user.roles:
+                    await user.add_roles(reaction.message.guild.get_role(578065727148523520))   #Minecraft Gang
+                    await reaction.message.channel.send("Added " + user.display_name + " to Minecraft Gang")
+            elif reaction.emoji.id == 804144662372810763:
+                if reaction.message.guild.get_role(631381336216567811) not in user.roles:
+                    await user.add_roles(reaction.message.guild.get_role(631381336216567811))   #Overwatch Gang
+                    await reaction.message.channel.send("Added " + user.display_name + " to Overwatch Gang")
+            elif reaction.emoji.id == 804146585998065675:
+                if reaction.message.guild.get_role(631381556677574666) not in user.roles:
+                    await user.add_roles(reaction.message.guild.get_role(631381556677574666))   #TFT Gang
+                    await reaction.message.channel.send("Added " + user.display_name + " to TFT Gang")
+            elif reaction.emoji.id == 804144489349251123:
+                if reaction.message.guild.get_role(652672401036935190) not in user.roles:
+                    await user.add_roles(reaction.message.guild.get_role(652672401036935190))   #Civ Gang
+                    await reaction.message.channel.send("Added " + user.display_name + " to Civ Gang")
+            elif reaction.emoji.id == 804147220256915466:
+                if reaction.message.guild.get_role(697229534595907595) not in user.roles:
+                    await user.add_roles(reaction.message.guild.get_role(697229534595907595))   #Warcraft Gang
+                    await reaction.message.channel.send("Added " + user.display_name + " to Warcraft Gang")
+            elif reaction.emoji.id == 804146850104999946:
+                if reaction.message.guild.get_role(712503396317265930) not in user.roles:
+                    await user.add_roles(reaction.message.guild.get_role(712503396317265930))   #Jackbox Gang
+                    await reaction.message.channel.send("Added " + user.display_name + " to Jackbox Gang")
+            elif reaction.emoji.id == 804146402258714634:
+                if reaction.message.guild.get_role(730207607180099654) not in user.roles:
+                    await user.add_roles(reaction.message.guild.get_role(730207607180099654))   #League Gang
+                    await reaction.message.channel.send("Added " + user.display_name + " to League Gang")
+            elif reaction.emoji.id == 754595623415578665:
+                if reaction.message.guild.get_role(752041724750069861) not in user.roles:
+                    await user.add_roles(reaction.message.guild.get_role(752041724750069861))   #Among Us Gang
+                    await reaction.message.channel.send("Added " + user.display_name + " to Among Us Gang")
+            elif reaction.emoji.id == 804148267327684648:
+                if reaction.message.guild.get_role(758201150762778664) not in user.roles:
+                    await user.add_roles(reaction.message.guild.get_role(758201150762778664))   #RuneScape Gang
+                    await reaction.message.channel.send("Added " + user.display_name + " to RuneScape Gang")
+            elif reaction.emoji.id == 804147593768206378:
+                if reaction.message.guild.get_role(774093125144018984) not in user.roles:
+                    await user.add_roles(reaction.message.guild.get_role(774093125144018984))   #DND Gang
+                    await reaction.message.channel.send("Added " + user.display_name + " to DND Gang")
+            elif reaction.emoji.id == 804145901630128128:
+                if reaction.message.guild.get_role(794745361461280768) not in user.roles:
+                    await user.add_roles(reaction.message.guild.get_role(794745361461280768))   #Chess Gang
+                    await reaction.message.channel.send("Added " + user.display_name + " to Chess Gang")
+            elif reaction.emoji.id == 804147857719951431:
+                if reaction.message.guild.get_role(803020418319122453) not in user.roles:
+                    await user.add_roles(reaction.message.guild.get_role(803020418319122453))   #Stardew Gang
+                    await reaction.message.channel.send("Added " + user.display_name + " to Stardew Gang")
+            await reaction.remove(user)
+#`````````````````````````````````````````````````````
+
+    async def on_raw_reaction_add(self, payload):
+        if str(payload.emoji) == "☑️" and payload.message_id == 759611108541071380:
+            await payload.member.remove_roles(payload.member.guild.get_role(self.initiate_role_id))
+
+    async def on_reaction_remove(self, reaction, user):
+        if reaction.message.author == self.user and self.play_text in reaction.message.content and user != self.user:
+            if reaction.emoji == "✅":
+                await user.remove_roles(reaction.message.guild.get_role(self.yes_role_id))
+                reaction_message = reaction.message.content.replace('\n*'+user.display_name+'*', '').strip()
+                await reaction.message.edit(content=reaction_message)
+                checkmark_select = (reaction.message.channel.name,)
+                self.c.execute("SELECT yes FROM play_requests WHERE game=?", checkmark_select)
+                yes_list = self.c.fetchone()
+                yes_list = yes_list[0].replace(str(user), '').strip()
+                checkmark_update = (yes_list, reaction.message.channel.name)
+                self.c.execute("UPDATE play_requests SET yes = ? WHERE game = ?", checkmark_update)
+                self.db.commit()
+            if reaction.emoji == "❌":
+                await user.remove_roles(reaction.message.guild.get_role(self.no_role_id))
+                xmark_select = (reaction.message.channel.name,)
+                self.c.execute("SELECT no FROM play_requests WHERE game=?", xmark_select)
+                no_list = self.c.fetchone()
+                no_list = no_list[0].replace(str(user), '').strip()
+                xmark_update = (no_list, reaction.message.channel.name)
+                self.c.execute("UPDATE play_requests SET yes = ? WHERE game = ?", xmark_update)
+                self.db.commit()
+        #for !poll
+        if "made a poll:" in reaction.message.content and user != self.user:
+            self.c.execute("SELECT emoji FROM emojis WHERE emoji = ?", str(reaction.emoji))
+            emojis = self.c.fetchall()
+            for emoji in emojis:
+                to_send = ''
+                if emoji[0] in reaction.message.content:
+                    options = reaction.message.content.split(":")
+                    for option in options:
+                        if emoji[0] in option and option[0] == emoji[0]:
+                            to_send = to_send + option[1:] + ':'
+                        else:
+                            to_send = to_send + option + ':'
+                    to_send = to_send[:-1]
+                    await reaction.message.edit(content=to_send)
+
+
+    async def on_member_join(self, member):
+        try:
+            await member.add_roles(member.guild.get_role(self.initiate_role_id))
+        except:
+            pass
+
+
+    async def on_voice_state_update(self, member, before, after):
+        try:
+            mute = self.get_channel(870946768928534528)
+            if before.channel == None and after.channel != None and after.channel.guild.id == 578065102310342677:
+                await mute.set_permissions(member, send_messages = True, read_messages = True)
+            elif before.channel != None and after.channel == None and before.channel.guild.id == 578065102310342677:
+                await mute.set_permissions(member, send_messages = False, read_messages = False)
+        except:
+            pass
+
+
+    async def post(self, channel_name, text):
+        channels = {"general": 578065102310342679, #Actually "the-main-dojo"
+                    "memes": 600497105399709725,
+                    "announcements": 578065404031664137,
+                    "suggestions": 615001686934683649,
+                    "think-tank": 776603967475810304,
+                    "admins": 578067589188681748,
+                    "donors": 578067658818453542,
+                    "bot-test": 582060071052115978,
+                    "music-requests": 582064740973543435}
+        channel = self.get_channel(channels[channel_name]) # channel ID goes here
+        await channel.send(text)
+
+    async def update_calendar(self):
+        pass
+
+    async def vc_connect(self, message):
+        user = message.author
+        voice_channel = user.voice.channel
+        if str(user.voice.channel.id) in self.vc.keys():
+            pass
+        else:
+            if voice_channel != None:
+                voice_obj = await voice_channel.connect()
+                self.vc[str(user.voice.channel.id)] = voice_obj
+                #await message.channel.send('Robin has connected')
+            else:
+                await message.channel.send('You are not in a channel')
+
+    async def vc_disconnect(self, message):
+        try:
+            if message.author.voice == None:
+                raise ValueError("User not in voice channel")
+            channel_id = str(message.author.voice.channel.id)
+            if channel_id not in self.vc.keys():
+                raise ValueError("User not in voice channel")
+            if self.vc[channel_id] == None:
+                raise ValueError("Robin is not connected")
+            if self.vc[channel_id].channel != message.author.voice.channel:
+                raise ValueError("User not in voice channel")
+            if self.vc[str(message.author.voice.channel.id)].is_connected():
+                await self.vc[str(message.author.voice.channel.id)].disconnect()
+                await message.channel.send('Robin has disconnected')
+            else:
+                await message.channel.send('Robin is not in a channel')
+            self.vc[str(message.author.voice.channel.id)] = None
+        except ValueError as err:
+            if str(err) == "User not in voice channel":
+                await message.channel.send('You must be in a voice channel with Robin to disconnect her')
+            elif str(err) == "Robin is not connected":
+                await message.channel.send('Robin must !connect first')
+
+    async def vc_say(self, message):
+        self.voice_block = True
+        try:
+            if message.author.voice == None:
+                raise ValueError("User not in voice channel")
+            channel_id = str(message.author.voice.channel.id)
+            if channel_id not in self.vc.keys():
+                raise ValueError("Robin is not connected")
+            if self.vc[channel_id] == None:
+                raise ValueError("Robin is not connected")
+            if self.vc[channel_id].channel != message.author.voice.channel:
+                raise ValueError("Robin is not connected")
+
+            say_content = message.content.replace("!say", '').strip()
+            for char in ['<', '>', ':', '"', '/', '\\', '|', '?', '*']:
+                say_content = say_content.replace(char, '')
+            if len(say_content) < 1 or len(say_content) > 255:
+                raise ValueError("Incorrect input length")
+
+            while not isfile(AUDIO_PATH+"/"+say_content+".mp3"):
+                await sleep(0.1)
+                print("test")
+            self.vc[channel_id].play(FFmpegPCMAudio(executable=FFMPEG_PATH, source=AUDIO_PATH+"/"+say_content+".mp3"))
+            while self.vc[channel_id].is_playing():
+                await sleep(10)
+                if self.vc[channel_id] == None:
+                    break
+            remove(AUDIO_PATH+"/"+say_content+".mp3")
+        except ValueError as err:
+            if str(err) == "User not in voice channel":
+                message.channel.send("You must be in a voice channel to use the !say command")
+            elif str(err) == "Robin is not connected":
+                await self.vc_connect(message)
+                if self.vc[channel_id].channel == message.author.voice.channel:
+                    await self.vc_say(message)
+            elif str(err) == "Incorrect input length":
+                message.channel.send('Message must be 1-255 characters long')
+            else:
+                print(err)
+        finally:
+            self.voice_block = False
+
+    @loop(seconds = 1)
+    async def jukebox(self):
+        if (not self.song_queue.empty()) or self.next_song != None:
+            if self.next_song == None:
+                self.next_song = self.song_queue.get()   #self.next_song: (url, channel_id)
+                (url, channel_id) = self.next_song
+                ydl_opts = {
+                    'format': 'bestaudio/best',
+                    'outtmpl': 'song/up_next.mp3',
+                    'postprocessors': [{
+                        'key': 'FFmpegExtractAudio',
+                        'preferredcodec': 'mp3',
+                        'preferredquality': '192',
+                    }]
+                }
+                with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+                    ydl.download([url])
+            (url, channel_id) = self.next_song
+            voice_client = self.vc[channel_id]
+            if voice_client.is_connected():
+                if not (voice_client.is_playing() or voice_client.is_paused()):
+                    song_exists = isfile("/home/pi/song/song.mp3")
+                    next_exists = isfile("/home/pi/song/up_next.mp3")
+                    if song_exists:
+                        remove("/home/pi/song/song.mp3")
+                    if next_exists:
+                        rename('/home/pi/song/up_next.mp3', '/home/pi/song/song.mp3')   # Can change to os.getcwd() to change to current working directory
+                        voice_client.play(FFmpegPCMAudio(executable=FFMPEG_PATH, source="song/song.mp3"))
+                        self.next_song = None
+
+
+    @loop(seconds = 5)
+    async def robin_STT(self):
+        if self.connected == True:
+            msg = get_msg()
+            if msg != None:
+                if msg == DISCONNECT_MESSAGE:
+                    self.connected = False
+                else:
+                    try:
+                        to_post = msg.split(' ', 1)
+                        await self.post(to_post[0], to_post[1])
+                    except:
+                        pass
+        if not self.queue.empty():
+            to_use = self.queue.get()
+            await self.post(to_use[0], to_use[1])
+            print("You said " + to_use[0] + " to " + to_use[1])
+        if (not self.voice_queue.empty()) and self.voice_block == False:
+            to_say = self.voice_queue.get()
+            await self.vc_say(to_say)
+
+    @loop(minutes = 20)
+    async def braincell_swap(self):
+        members = self.get_channel(578065102310342679).members      #get the-main-dojo members
+        for member in members:
+            if self.get_guild(578065102310342677).get_role(746572040131051563) in member.roles: #bots
+                members.remove(member)
+        braincell_role = self.get_guild(578065102310342677).get_role(771408034957623348)
+        for member in members:
+            if braincell_role in member.roles:
+                await member.remove_roles(braincell_role)
+        size = len(members)
+        new_user = randint(1,size)
+        i = 0
+        for member in members:
+            i+=1
+            if i == new_user:
+                await member.add_roles(braincell_role)
+        self.think_lock = False
+
+
+    @loop(hours = 3)
+    async def posture_check(self):
+        user = self.get_user(295033460794589184)
+        await user.send("Posture Check!")
+
+    @loop(minutes = 1)
+    async def check_datetime(self):
+        today = date.today()
+        month = today.strftime("%m")
+        day = today.strftime("%d")
+        year = today.strftime("%Y")
+        t = localtime()
+        current_time = strftime("%I:%M%p", t)
+        if current_time[0] == '0':
+            current_time = current_time[1:]
+        check_datetime_select = (month, day, year, current_time.lower())
+        self.c.execute("SELECT event_name, gang FROM calendar WHERE month = ? AND day = ? AND year = ? AND time = ?", check_datetime_select)
+        events = self.c.fetchall()
+        for event in events:
+            #await self.get_channel(582060071052115978).send(event[0] + " is starting right now!")
+            if event[1] and (event[1] != "none"):
+                mention = ''
+                for role in self.get_guild(578065102310342677).roles:
+                    if role.name.lower() == event[1].lower():   #find gang role from gang field
+                        mention = role.mention
+                        channel_name = role.name.lower()
+                        for letter in role.name.lower():
+                            if letter == ' ':
+                                channel_name = channel_name.replace(' ', '-')
+#````````````````````````````````````MARKED FOR CLEANUP````````````````````````````````````
+                        for channel in self.get_guild(578065102310342677).text_channels:    #find gang channel from gang role
+                            if channel.name == channel_name:
+                                if 'daily' in event[0].lower():
+                                    await channel.send(mention + ' ' + event[0] + " is starting right now!")
+                                    daily_select = (event[0],)
+                                    self.c.execute('SELECT * FROM calendar WHERE event_name = ?', daily_select)
+                                    daily_event = self.c.fetchone()
+                                    self.c.execute('DELETE FROM calendar WHERE event_name = ?', daily_select)
+                                    daily_tomorrow = date.today() + timedelta(days=1)
+                                    daily_insert = (daily_event[0], daily_tomorrow.year, daily_tomorrow.month, daily_tomorrow.day, daily_event[4], daily_event[5])
+                                    self.c.execute('INSERT INTO calendar VALUES (?,?,?,?,?,?)', daily_insert)
+                                    self.db.commit()
+                                elif 'weekly' in event[0].lower():
+                                    await channel.send(mention + ' ' + event[0] + " is starting right now!")
+                                    weekly_select = (event[0],)
+                                    self.c.execute('SELECT * FROM calendar WHERE event_name = ?', weekly_select)
+                                    weekly_event = self.c.fetchone()
+                                    self.c.execute('DELETE FROM calendar WHERE event_name = ?', weekly_select)
+                                    next_week = date.today() + timedelta(weeks=1)
+                                    weekly_insert = (weekly_event[0], next_week.year, next_week.month, next_week.day, weekly_event[4], weekly_event[5])
+                                    self.c.execute('INSERT INTO calendar VALUES (?,?,?,?,?,?)', weekly_insert)
+                                    self.db.commit()
+                                elif 'monthly' in event[0].lower():
+                                    await channel.send(mention + ' ' + event[0] + " is starting right now!")
+                                    monthly_select = (event[0],)
+                                    self.c.execute('SELECT * FROM calendar WHERE event_name = ?', monthly_select)
+                                    monthly_event = self.c.fetchone()
+                                    self.c.execute('DELETE FROM calendar WHERE event_name = ?', monthly_select)
+                                    if date.today().month == 2:
+                                        extra_days = 0
+                                    elif date.today().month == 4 or 6 or 9 or 11:
+                                        extra_days = 2
+                                    else:
+                                        extra_days = 3
+                                    next_month = date.today() + timedelta(weeks=4, days=extra_days)
+                                    monthly_insert = (monthly_event[0], next_month.year, next_month.month, next_month.day, monthly_event[4], monthly_event[5])
+                                    self.c.execute('INSERT INTO calendar VALUES (?,?,?,?,?,?)', monthly_insert)
+                                    self.db.commit()
+                                else:
+                                    await channel.send(mention + ' ' + event[0] + " is starting right now!")
+                                    self.c.execute("DELETE FROM calendar WHERE month = ? AND day = ? AND year = ? AND time = ?", check_datetime_select)
+                                    self.db.commit()
+            else:
+                #await self.get_channel(582060071052115978).send(event[0] + " is starting right now!")
+                if 'daily' in event[0].lower():
+                    await self.get_channel(578065102310342679).send(event[0] + " is starting right now!")
+                    daily_select = (event[0],)
+                    self.c.execute('SELECT * FROM calendar WHERE event_name = ?', daily_select)
+                    daily_event = self.c.fetchone()
+                    self.c.execute('DELETE FROM calendar WHERE event_name = ?', daily_select)
+                    daily_tomorrow = date.today() + timedelta(days=1)
+                    daily_insert = (daily_event[0], daily_tomorrow.year, daily_tomorrow.month, daily_tomorrow.day, daily_event[4], daily_event[5])
+                    self.c.execute('INSERT INTO calendar VALUES (?,?,?,?,?,?)', daily_insert)
+                    self.db.commit()
+                elif 'weekly' in event[0].lower():
+                    await self.get_channel(578065102310342679).send(event[0] + " is starting right now!")
+                    weekly_select = (event[0],)
+                    self.c.execute('SELECT * FROM calendar WHERE event_name = ?', weekly_select)
+                    weekly_event = self.c.fetchone()
+                    self.c.execute('DELETE FROM calendar WHERE event_name = ?', weekly_select)
+                    next_week = date.today() + timedelta(weeks=1)
+                    weekly_insert = (weekly_event[0], next_week.year, next_week.month, next_week.day, weekly_event[4], weekly_event[5])
+                    self.c.execute('INSERT INTO calendar VALUES (?,?,?,?,?,?)', weekly_insert)
+                    self.db.commit()
+                elif 'monthly' in event[0].lower():
+                    await self.get_channel(578065102310342679).send(event[0] + " is starting right now!")
+                    monthly_select = (event[0],)
+                    self.c.execute('SELECT * FROM calendar WHERE event_name = ?', monthly_select)
+                    monthly_event = self.c.fetchone()
+                    self.c.execute('DELETE FROM calendar WHERE event_name = ?', monthly_select)
+                    if date.today().month == 2:
+                        extra_days = 0
+                    elif date.today().month == 4 or 6 or 9 or 11:
+                        extra_days = 2
+                    else:
+                        extra_days = 3
+                    next_month = date.today() + timedelta(weeks=4, days=extra_days)
+                    monthly_insert = (monthly_event[0], next_month.year, next_month.month, next_month.day, monthly_event[4], monthly_event[5])
+                    self.c.execute('INSERT INTO calendar VALUES (?,?,?,?,?,?)', monthly_insert)
+                    self.db.commit()
+                elif 'birthday' in event[0].lower():
+                    await self.get_channel(578065102310342679).send(event[0])
+                    birthday_select = (event[0],)
+                    self.c.execute('SELECT * FROM calendar WHERE event_name = ?', birthday_select)
+                    birthday_event = self.c.fetchone()
+                    self.c.execute('DELETE FROM calendar WHERE event_name = ?', birthday_select)
+                    birthday_insert = (birthday_event[0], date.today().year + 1, date.today().month, date.today().day, birthday_event[4], birthday_event[5])
+                    self.c.execute('INSERT INTO calendar VALUES (?,?,?,?,?,?)', birthday_insert)
+                    self.db.commit()
+                else:
+                    await self.get_channel(578065102310342679).send(event[0] + " is starting right now!")
+                    self.c.execute("DELETE FROM calendar WHERE month = ? AND day = ? AND year = ? AND time = ?", check_datetime_select)
+                    self.db.commit()
+#```````````````````````````````````````````````````````````````````````````````
+
+
+
+if __name__ == '__main__':
+    client = MyClient(MyQueue, intents=intents)
+    client.run(TOKEN)
