@@ -6,7 +6,7 @@ from os.path import getsize
 from time import sleep
 
 HEADER = 256
-HOST = "10.0.0.30"  # Standard loopback interface address (localhost)
+HOST = "10.0.0.28"  # Standard loopback interface address (localhost)
 PORT = 65432        # Port to listen on (non-privileged ports are > 1023)
 ADDR = (HOST, PORT)
 FORMAT = 'utf-8'

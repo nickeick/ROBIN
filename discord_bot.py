@@ -1,9 +1,9 @@
 #!/usr/bin/python3
 
-from discord import Client, Game, File, PermissionOverwrite, FFmpegPCMAudio, Intents
+from discord import Client, Game, File, PermissionOverwrite, FFmpegPCMAudio, Intents, Embed, PCMVolumeTransformer
 from discord.ext.tasks import loop
 from discord.utils import get
-from asyncio import sleep, TimeoutError
+from asyncio import sleep, TimeoutError, get_event_loop
 from queue import Queue
 from random import randint
 from sqlite3 import connect
@@ -15,8 +15,11 @@ from os.path import isfile
 from os import remove, environ, listdir, rename, getcwd
 import ffmpeg
 import youtube_dl
+from youtube_dl import YoutubeDL
+import yt_dlp
 from dotenv import load_dotenv
 from sys import platform
+from pytube import YouTube
 
 load_dotenv()
 TOKEN = environ.get('TOKEN')
@@ -30,6 +33,7 @@ intents = Intents.default()
 intents.members = True
 
 DISCONNECT_MESSAGE = "#DISCONNECT#"
+CONNECT_UI_MESSAGE = "#UICONNECTED#"
 #tables:
 #commands (command_name, output, author)
 #play_requests (game text UNIQUE, time text, yes text, no text, requestor text)
@@ -38,11 +42,62 @@ DISCONNECT_MESSAGE = "#DISCONNECT#"
 #emojis (emoji text UNIQUE)
 #counters (counter text UNIQUE, count integer)
 #casino (outcome string UNIQUE, bets string)
+#music (userid text, song text, liked integer (0 or 1))
+
+
+# Suppress noise about console usage from errors
+youtube_dl.utils.bug_reports_message = lambda: ''
+
+
+ytdl_format_options = {
+    'format': 'bestaudio/best',
+    'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
+    'restrictfilenames': True,
+    'noplaylist': True,
+    'nocheckcertificate': True,
+    'ignoreerrors': False,
+    'logtostderr': False,
+    'quiet': True,
+    'no_warnings': True,
+    'default_search': 'auto',
+    'source_address': '10.0.0.28' # bind to ipv4 since ipv6 addresses cause issues sometimes
+}
+
+ffmpeg_options = {
+    "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
+    'options': '-vn'
+}
+
+ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
+
+
+class YTDLSource(PCMVolumeTransformer):
+    def __init__(self, source, *, data, volume=0.5):
+        super().__init__(source, volume)
+
+        self.data = data
+
+        self.title = data.get('title')
+        self.url = data.get('url')
+
+    @classmethod
+    async def from_url(cls, url, *, loop=None, stream=False):
+        loop = loop or get_event_loop()
+        data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
+
+        if 'entries' in data:
+            # take first item from a playlist
+            data = data['entries'][0]
+
+        filename = data['url'] if stream else ytdl.prepare_filename(data)
+        return cls(FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
+
 
 
 class MyClient(Client):
     def __init__(self, queue, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.client = Client
         self.queue = queue
         self.voice_queue = Queue()
         self.song_queue = Queue()
@@ -77,6 +132,14 @@ class MyClient(Client):
 
         # dojo = self.get_guild(578065102310342677)
         # general = self.get_channel(578065102310342679)
+        self.channels = self.get_all_channels()
+        self.text_channels = {}
+        for channel in self.channels:
+            if str(channel.type) == 'text':
+                for member in channel.members:
+                    if member.id == 662839781092491284:
+                        if channel.permissions_for(member).send_messages:
+                            self.text_channels[channel.name] = channel.id
         self.c = self.db.cursor()
         try:
             self.conn, self.addr = start()
@@ -105,6 +168,9 @@ class MyClient(Client):
 
         elif message.content.startswith('!execute'):
             if str(message.author) == 'nickeick#9008':
+                #self.c.execute("DROP TABLE music")
+                #self.c.execute("CREATE TABLE music (userid text, song text, liked integer)")
+                #self.db.commit()
                 # execute1 = ("MeltingSnowman#1699", 9)
                 # c.execute("REPLACE INTO braincell_points (name, points) VALUES (?, ?)", execute1)
                 # db.commit()
@@ -152,9 +218,15 @@ class MyClient(Client):
 !addwaitlist - Type !addwaitlist followed by the name of a role and @ing someone to add them to the waitlist for that game
 !waitlist - Type !waitlist and a role to see who is on that waitlist
 !icon - Type !icon to get the server icon image''')
+            elif help_message == "singing":
+                await message.channel.send('''!sing - A url or description of a song to have Robin play a song in a voice channel
+!skip - To skip to the next song in the queue or to stop the current song
+!pause - To pause the currently playing song
+!resume - To continue a paused song
+!upnext - To see which song is next in the queue''')
             else:
                 await message.channel.send('''Send !help <category> to see the commands pertaining to the category.
-Categories: gangs, braincell, play requests, calendar, misc''')
+Categories: gangs, braincell, play requests, calendar, singing, misc''')
 
 
         elif message.content == '!robin':
@@ -280,7 +352,9 @@ Join the Stardew Gang: <:chicken:804147857719951431>''')
                 # self.c.execute("REPLACE INTO play_requests (game, time, yes, no, requestor) VALUES (?,?,?,?,?)", play_sql)
                 # self.db.commit()
             else:
-                await message.channel.send("You can only send this command in a gang chat")
+                sent = await message.channel.send("Dojo," + self.play_text + time + "?\n\nYesses:")
+                await sent.add_reaction("✅")
+                await sent.add_reaction("❌")
 
 
         elif message.content.startswith('!replay'):
@@ -403,7 +477,6 @@ Join the Stardew Gang: <:chicken:804147857719951431>''')
 
 
         elif message.content.startswith('!gangs'):
-            #to_send = '''Among Us Gang\nCiv Gang\nJackbox Gang\nLeague Gang\nMinecraft Gang\nMovie Night Gang\nOverwatch Gang\nParody Gang\nTFT Gang\nWarcraft Gang'''
             to_send = 'The Gangs:'
             for role in message.guild.roles:
                 if "Gang" in role.name:
@@ -458,7 +531,6 @@ Join the Stardew Gang: <:chicken:804147857719951431>
                     think_select = (str(message.author),)
                     self.c.execute("SELECT points FROM braincell_points WHERE name=?", think_select)
                     points = self.c.fetchone()
-                    #print(points)
                     if points == None:
                         think_replace = (str(message.author), 1)
                     else:
@@ -478,6 +550,11 @@ Join the Stardew Gang: <:chicken:804147857719951431>
             else:
                 await message.channel.send("You don't have the brain cell <:bonk:772161497031507968>")
 
+        elif message.content.startswith('!count'):
+            think_select = (str(message.author),)
+            self.c.execute("SELECT points FROM braincell_points WHERE name=?", think_select)
+            points = self.c.fetchone()
+            message.channel.send("You have " + str(points[0]) + " Common Cents")
 
         elif message.content.startswith('!leaderboard'):
             self.c.execute("SELECT * FROM braincell_points ORDER BY points DESC")
@@ -516,13 +593,9 @@ Join the Stardew Gang: <:chicken:804147857719951431>
             await sent.add_reaction("➡️")
 
 
-        elif message.content.startswith('!atme'):
-            await message.channel.send("Ashe, Erik, Corbin, Nick, Katie, Cole, Casey, Hanray, Snowman, Sarah, Firebox, Jaxington, Kittycat7070, Miskat, Justin (Joosbox), Arpan (OneaUsix), Stephen, Adam (tiggie), Skyler (SkyDwag), Nessa (NoodleGal) (Parker has offered to give you the cent if you @ him)")
-
-
         elif message.content.startswith('!give'):
             give_message = message.content.replace('!give', '').strip()
-            print(give_message)
+            #print(give_message)
             try:
                 give_re = search(r'(.+) (\d+)', give_message)
                 if not give_re:
@@ -934,6 +1007,9 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
         elif message.content.startswith("!connect"):
             await self.vc_connect(message)
 
+        elif message.content.startswith("!incall"):
+            await self.vc[str(message.author.voice.channel.id)].is_connected()
+
         elif message.content.startswith("!disconnect"):
             await self.vc_disconnect(message)
 
@@ -947,15 +1023,22 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
 
         elif message.content.startswith("!sing"):
             url = message.content.replace("!sing", '').strip()
-
             if message.author.voice != None:
                 try:
                     await self.vc_connect(message)
                 except:
                     pass
-            channel_id = str(message.author.voice.channel.id)
+            try:
+                title, url = await self.vc_play_song(url, message)
+            except Exception as err:
+                #print(err)   check if the right error
+                channel_id = str(message.author.voice.channel.id)
+                self.song_queue.put((url,channel_id,message))
+                await message.channel.send("Your song has been queued")
 
-            self.song_queue.put((url,channel_id))
+        elif message.content.startswith("!stop"):
+            pass #skip current song and dump all songs from queue
+
 
         elif message.content.startswith('!skip'):
             try:
@@ -1003,6 +1086,13 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
             else:
                 await message.channel.send(self.next_song[0])
 
+        elif message.content.startswith('!data'):
+            if str(message.author) == 'nickeick#9008':
+                self.c.execute("SELECT * FROM music")
+                items = self.c.fetchall()
+                for item in items:
+                    print(item[0] + " | " + item[1] + " | " + str(item[2]))
+
 
 #--------------------------Misc---------------------------------------
 
@@ -1030,7 +1120,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
             await self.vc_connect(message)
             try:
                 channel_id = str(message.author.voice.channel.id)
-                self.song_queue.put(('https://www.youtube.com/watch?v=Gl6ekgobG2k&ab_channel=ReptileLegitYT',channel_id))
+                self.song_queue.put(('https://www.youtube.com/watch?v=Gl6ekgobG2k&ab_channel=ReptileLegitYT',channel_id,message))
             except:
                 pass
 
@@ -1038,9 +1128,14 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
             await self.vc_connect(message)
             try:
                 channel_id = str(message.author.voice.channel.id)
-                self.song_queue.put(('https://www.youtube.com/watch?v=ykLDTsfnE5A&ab_channel=J7ck2',channel_id))
+                self.song_queue.put(('https://www.youtube.com/watch?v=ykLDTsfnE5A&ab_channel=J7ck2',channel_id,message))
             except:
                 pass
+
+        elif message.content.startswith('!8ball'):
+            answers = ['Absolutely will happen!', 'Maybe someday...', 'Probably I guess', 'Yes, definitely', "I don't know dude", "I can't tell", 'The answer is no', 'It looks doubtful', "Don't count on it", 'No']
+            ans = randint(0, len(answers))
+            await message.channel.send(answers[ans])
 
         elif message.content.startswith('!icon'):
             await message.channel.send("", file=File("dojo.png"))
@@ -1363,6 +1458,31 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                 await reaction.message.edit(content=to_send)
                 await reaction.remove(user)
 
+        if reaction.message.author == self.user and "Robin is now singing:" in reaction.message.embeds[0].title and user != self.user:
+            if str(reaction.emoji) == "👍":
+                song_name = reaction.message.embeds[0].description
+                values = (user.id, song_name)
+                self.c.execute("SELECT * FROM music WHERE userid=? AND song=?", values)
+                items = self.c.fetchall()
+                if len(items) > 0:
+                    values = (user.id, song_name, 1)
+                    self.c.execute("REPLACE INTO music (userid, song, liked) VALUES (?, ?, ?)", values)
+                else:
+                    values = (user.id, song_name, 1)
+                    self.c.execute("INSERT INTO music VALUES (?, ?, ?)", values)
+                self.db.commit()
+            if str(reaction.emoji) == "👎":
+                song_name = reaction.message.embeds[0].description
+                values = (user.id, song_name)
+                self.c.execute("SELECT * FROM music WHERE userid=? AND song=?", values)
+                items = self.c.fetchall()
+                if len(items) > 0:
+                    values = (user.id, song_name, 0)
+                    self.c.execute("REPLACE INTO music (userid, song, liked) VALUES (?, ?, ?)", values)
+                else:
+                    values = (user.id, song_name, 0)
+                    self.c.execute("INSERT INTO music VALUES (?, ?, ?)", values)
+                self.db.commit()
 #````````````````````MARKED FOR CLEANUP`````````````````````````
 
         if reaction.message.author == self.user and "React to Join a Role:" in reaction.message.content and user != self.user:
@@ -1479,6 +1599,14 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
 
     async def on_voice_state_update(self, member, before, after):
         try:
+            if before.channel != None:                          #Tests if leaving vc
+                if str(before.channel.id) in self.vc.keys():    #Tests if in vc with Robin
+                    if len(before.channel.members) == 1:        #Tests if Robin is alone
+                        await self.vc[str(before.channel.id)].disconnect()
+                        del self.vc[str(message.author.voice.channel.id)]
+        except:
+            pass
+        try:
             mute = self.get_channel(870946768928534528)
             if before.channel == None and after.channel != None and after.channel.guild.id == 578065102310342677:
                 await mute.set_permissions(member, send_messages = True, read_messages = True)
@@ -1489,20 +1617,10 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
 
 
     async def post(self, channel_name, text):
-        channels = {"general": 578065102310342679, #Actually "the-main-dojo"
-                    "memes": 600497105399709725,
-                    "announcements": 578065404031664137,
-                    "suggestions": 615001686934683649,
-                    "think-tank": 776603967475810304,
-                    "admins": 578067589188681748,
-                    "donors": 578067658818453542,
-                    "bot-test": 582060071052115978,
-                    "music-requests": 582064740973543435}
+        channels = self.text_channels
         channel = self.get_channel(channels[channel_name]) # channel ID goes here
         await channel.send(text)
 
-    async def update_calendar(self):
-        pass
 
     async def vc_connect(self, message):
         user = message.author
@@ -1533,14 +1651,15 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                 await message.channel.send('Robin has disconnected')
             else:
                 await message.channel.send('Robin is not in a channel')
-            self.vc[str(message.author.voice.channel.id)] = None
+            if str(message.author.voice.channel.id) in self.vc:
+                del self.vc[str(message.author.voice.channel.id)]
         except ValueError as err:
             if str(err) == "User not in voice channel":
                 await message.channel.send('You must be in a voice channel with Robin to disconnect her')
             elif str(err) == "Robin is not connected":
                 await message.channel.send('Robin must !connect first')
 
-    async def vc_say(self, message):
+    async def vc_say(self, message):        #instead of message, make it channel
         self.voice_block = True
         try:
             if message.author.voice == None:
@@ -1582,35 +1701,30 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
         finally:
             self.voice_block = False
 
+    async def vc_play_song(self, url, message):
+        #!sing
+        player = await YTDLSource.from_url(url, loop=None, stream=True)
+        self.vc[str(message.author.voice.channel.id)].play(player, after=lambda e: print('Player error: %s' % e) if e else None)
+        embed = Embed(title="Robin is now singing:", description=f"{player.title}", url=player.url)
+        current_song = await message.channel.send(embed=embed)
+        await current_song.add_reaction('👍')
+        await current_song.add_reaction('👎')
+        return (player.title, player.url)
+
+
     @loop(seconds = 1)
     async def jukebox(self):
-        if (not self.song_queue.empty()) or self.next_song != None:
+        if not self.song_queue.empty():
+            print("test1")
             if self.next_song == None:
-                self.next_song = self.song_queue.get()   #self.next_song: (url, channel_id)
-                (url, channel_id) = self.next_song
-                ydl_opts = {
-                    'format': 'bestaudio/best',
-                    'outtmpl': 'song/up_next.mp3',
-                    'postprocessors': [{
-                        'key': 'FFmpegExtractAudio',
-                        'preferredcodec': 'mp3',
-                        'preferredquality': '192',
-                    }]
-                }
-                with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-                    ydl.download([url])
-            (url, channel_id) = self.next_song
-            voice_client = self.vc[channel_id]
-            if voice_client.is_connected():
-                if not (voice_client.is_playing() or voice_client.is_paused()):
-                    song_exists = isfile("/home/pi/song/song.mp3")
-                    next_exists = isfile("/home/pi/song/up_next.mp3")
-                    if song_exists:
-                        remove("/home/pi/song/song.mp3")
-                    if next_exists:
-                        rename('/home/pi/song/up_next.mp3', '/home/pi/song/song.mp3')   # Can change to os.getcwd() to change to current working directory
-                        voice_client.play(FFmpegPCMAudio(executable=FFMPEG_PATH, source="song/song.mp3"))
-                        self.next_song = None
+                self.next_song = self.song_queue.get()  #self.next_song: (url, channel_id, message)
+        if self.next_song != None:
+            voice_client = self.vc[self.next_song[1]]
+            if voice_client.is_connected() and not (voice_client.is_playing() or voice_client.is_paused()):
+                print("test3")
+                await self.vc_play_song(self.next_song[0], self.next_song[2])
+                self.next_song = None
+                print("test4")
 
 
     @loop(seconds = 5)
@@ -1620,6 +1734,12 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
             if msg != None:
                 if msg == DISCONNECT_MESSAGE:
                     self.connected = False
+                elif msg == CONNECT_UI_MESSAGE:
+                    channel_list = 'channel_list: '
+                    for channel in self.text_channels.keys():
+                        channel_list += str(channel) + ','
+                    channel_list = channel_list.strip(',')
+                    send(self.conn, 'Send to:UI ' + channel_list)
                 else:
                     try:
                         to_post = msg.split(' ', 1)
@@ -1637,17 +1757,19 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
     @loop(minutes = 20)
     async def braincell_swap(self):
         members = self.get_channel(578065102310342679).members      #get the-main-dojo members
+        not_bots = []
         for member in members:
-            if self.get_guild(578065102310342677).get_role(746572040131051563) in member.roles: #bots
-                members.remove(member)
+            if not member.bot: #bots
+                not_bots.append(member)
         braincell_role = self.get_guild(578065102310342677).get_role(771408034957623348)
-        for member in members:
+        #print(not_bots)
+        for member in not_bots:
             if braincell_role in member.roles:
                 await member.remove_roles(braincell_role)
-        size = len(members)
+        size = len(not_bots)
         new_user = randint(1,size)
         i = 0
-        for member in members:
+        for member in not_bots:
             i+=1
             if i == new_user:
                 await member.add_roles(braincell_role)
