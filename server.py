@@ -4,7 +4,7 @@ from socket import gethostbyname, gethostname, socket, AF_INET, SOCK_STREAM, SHU
 from threading import Thread, activeCount
 from time import sleep, time
 from queue import Queue
-from os import popen, kill
+from os import popen, kill, system
 from subprocess import call
 from signal import SIGKILL
 
@@ -127,7 +127,9 @@ def processes():
     try:
         pids = []
         for line in popen("ps ax | grep python | grep -v grep"):
-            fields = line.split()
+            fields = line.split()                       #find and don't add server.py
+            for field in fields:
+                print(field)
             pid = fields[0]
             pids.append(pid)
             #os.kill(int(pid), SIGKILL)
@@ -136,8 +138,6 @@ def processes():
     except:
         print("Error in termination")
 
-def restart():
-    call("restart.sh")
 
 def handle_client(conn, addr, ping_queue):
     print("[NEW CONNECTION] " + str(addr) + " connected.")
@@ -191,12 +191,10 @@ def handle_client(conn, addr, ping_queue):
                     send(connection, DISCONNECT_MESSAGE)
                 print("[DISCONNECTING]... ALL CONNECTIONS")
                 pids = processes()
-                restarting = Thread(target=restart)
-                restarting.start()
-                restarting.join()
                 while pids != []:
                     pid = pids.pop(-1)
-                    os.kill(int(pid), SIGKILL)
+                    kill(int(pid), SIGKILL)
+                system("systemctl reboot -i")
 
             elif msg.startswith("Client:"):                   #send "Client:client_name"
                 client_name = msg.replace("Client:", '')

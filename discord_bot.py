@@ -43,6 +43,7 @@ CONNECT_UI_MESSAGE = "#UICONNECTED#"
 #counters (counter text UNIQUE, count integer)
 #casino (outcome string UNIQUE, bets string)
 #music (userid text, song text, liked integer (0 or 1))
+#nfts (id integer UNIQUE, url text, userid text, price integer)
 
 
 # Suppress noise about console usage from errors
@@ -79,6 +80,7 @@ class YTDLSource(PCMVolumeTransformer):
 
         self.title = data.get('title')
         self.url = data.get('url')
+        self.duration = data.get('duration')
 
     @classmethod
     async def from_url(cls, url, *, loop=None, stream=False):
@@ -110,11 +112,13 @@ class MyClient(Client):
         self.play_text = " is anyone interested in playing"
         self.yes_role_id = 757388821540372561
         self.no_role_id = 757389176449531954
+        self.maybe_role_id = 967147708131475496
         self.initiate_role_id = 759600936435449896
         self.jeopardy = False
         self.jeopardy_host = ""
         self.answered = False
         self.think_lock = False
+        self.waiting_channels = []
         self.waitlists = {"overwatch gang": [],
                             "civ gang": [],
                             "among us gang": [],
@@ -168,8 +172,10 @@ class MyClient(Client):
 
         elif message.content.startswith('!execute'):
             if str(message.author) == 'nickeick#9008':
-                #self.c.execute("DROP TABLE music")
-                #self.c.execute("CREATE TABLE music (userid text, song text, liked integer)")
+                #com_message = message.content.replace('!execute', '').strip()
+                #self.c.execute("SELECT * from commands WHERE output = ?" (com_message,))
+                #commands (command_name, output, author)
+                #self.c.execute("CREATE TABLE nfts (id integer UNIQUE, url text, userid text, price integer)")
                 #self.db.commit()
                 # execute1 = ("MeltingSnowman#1699", 9)
                 # c.execute("REPLACE INTO braincell_points (name, points) VALUES (?, ?)", execute1)
@@ -186,7 +192,7 @@ class MyClient(Client):
                 # _delete = ("Jax#6424",)
                 # c.execute("DELETE FROM braincell_points WHERE name=?", _delete)
                 # db.commit()
-                print()
+                print("done")
 
 
 
@@ -237,6 +243,7 @@ Categories: gangs, braincell, play requests, calendar, singing, misc''')
         elif message.content.startswith('!addcom'):
             for role in message.author.roles:
                 if role.name == "Server Admin":
+                    await self.tutorial(message, [('command name', 'text'), ('output', 'text')])
                     try:
                         com_message = message.content.replace('!addcom', '').strip().split(' ', 1)
                         if com_message[0][0] != '!' or com_message[0] == None or com_message[1] == None:
@@ -252,11 +259,42 @@ Categories: gangs, braincell, play requests, calendar, singing, misc''')
         elif message.content.startswith('!delcom'):
             for role in message.author.roles:
                 if role.name == "Server Admin":
+                    await self.tutorial(message, [('command name', 'text')])
                     com_message = message.content.replace('!delcom', '').strip()
                     delcom_delete = (com_message,)
                     self.c.execute("DELETE from commands WHERE command_name=?", delcom_delete)
                     self.db.commit()
                     await message.channel.send("Deleted " + com_message)
+
+        elif message.content.startswith('!editcom'):
+            for role in message.author.roles:
+                if role.name == "Server Admin":
+                    await self.tutorial(message, [('command name', 'text'), ('existing output', 'text')])
+                    try:
+                        com_message = message.content.replace('!editcom', '').strip().strip().split(' ', 1)
+                        assert com_message[0] != "", "You need to include a command name after !editcom"
+                        assert com_message[0][0] == '!', "Be sure to add ! to the beginning of your command"
+                        assert com_message[1] != "", "You need to include an output for the command you are editing. If you want to delete a command, use !delcom [command_name]"
+                        self.c.execute("SELECT * from commands WHERE command_name=? AND output=?", (com_message[0], com_message[1]))
+                        item = self.c.fetchone()
+                        assert item != None, "Command or output not found"
+                        author = message.author
+                        channel = message.channel
+                        def check(msg):
+                            return msg.author == author and msg.channel == channel
+                        await message.channel.send("What do you want to change it to?")
+                        response = await self.wait_for('message', check=check, timeout=30)
+                        self.c.execute("DELETE from commands WHERE command_name=? AND output=?", (com_message[0], com_message[1]))
+                        editcom_insert = (com_message[0], response.content, str(message.author))
+                        self.c.execute("INSERT INTO commands VALUES (?,?,?)", editcom_insert)
+                        self.db.commit()
+                        await message.channel.send(com_message[0] + " has been updated")
+                    except IndexError:
+                        await message.channel.send("You did not provide enough information. You need to include a command and an output to be edited")
+                    except TimeoutError:
+                        await message.channel.send("Command not edited (You took too long)")
+                    except AssertionError as err:
+                        await message.channel.send(err)
 
 
         elif message.content.startswith('!commands'):
@@ -277,11 +315,9 @@ Join the Minecraft Gang: <:minecraft:586388193860124673>
 Join the Overwatch Gang: <:overwatch:804144662372810763>
 Join the TFT Gang: <:tft:804146585998065675>
 Join the Civ Gang: <:civ:804144489349251123>
-Join the Warcraft Gang: <:wow:804147220256915466>
-Join the Jackbox Gang: <:jackbox:804146850104999946>
+Join the Party Game Gang: <:jackbox:804146850104999946>
 Join the League Gang: <:leagueoflegends:804146402258714634>
 Join the Movie Night Gang: 🎥
-Join the RuneScape Gang: <:runescape:804148267327684648>
 Join the DND Gang: <:dnd:804147593768206378>
 Join the Chess Gang: <:bishop:804145901630128128>
 Join the Presentation Gang: 🧑‍💼
@@ -290,11 +326,9 @@ Join the Stardew Gang: <:chicken:804147857719951431>''')
                 await sent.add_reaction("<:overwatch:804144662372810763>")
                 await sent.add_reaction("<:tft:804146585998065675>")
                 await sent.add_reaction("<:civ:804144489349251123>")
-                await sent.add_reaction("<:wow:804147220256915466>")
                 await sent.add_reaction("<:jackbox:804146850104999946>")
                 await sent.add_reaction("<:leagueoflegends:804146402258714634>")
                 await sent.add_reaction("🎥")
-                await sent.add_reaction("<:runescape:804148267327684648>")
                 await sent.add_reaction("<:dnd:804147593768206378>")
                 await sent.add_reaction("<:bishop:804145901630128128>")
                 await sent.add_reaction("🧑‍💼")
@@ -313,10 +347,8 @@ Join the Stardew Gang: <:chicken:804147857719951431>''')
 
 
         elif message.content.startswith('!leave'):
+            await self.tutorial(message, [('role', 'text')])
             role_message = message.content.replace('!leave', '').strip().lower()
-            if role_message == '':
-                await message.channel.send('Type !leave and role(s) to leave a role')
-                return
             for role in message.guild.roles:
                 if role.name.lower() in role_message:
                     if ('gang' not in role.name.lower()) or role.name == 'Server Admin' or role.name == 'Donor' or role.name == 'Bots' or role.name == 'Robin Otto' or role.name == "Groovy":
@@ -345,6 +377,7 @@ Join the Stardew Gang: <:chicken:804147857719951431>''')
                 sent = await message.channel.send(mention + self.play_text + time + "?\n\nYesses:")
                 await sent.add_reaction("✅")
                 await sent.add_reaction("❌")
+                await sent.add_reaction("❓")
                 #self.play_messages.append(sent)
                 if time == None:
                     time = ' '
@@ -355,6 +388,7 @@ Join the Stardew Gang: <:chicken:804147857719951431>''')
                 sent = await message.channel.send("Dojo," + self.play_text + time + "?\n\nYesses:")
                 await sent.add_reaction("✅")
                 await sent.add_reaction("❌")
+                await sent.add_reaction("❓")
 
 
         elif message.content.startswith('!replay'):
@@ -405,6 +439,15 @@ Join the Stardew Gang: <:chicken:804147857719951431>''')
             to_send = 'members said NO:'
             number = 0
             for member in message.guild.get_role(self.no_role_id).members:
+                number += 1
+                to_send += '\n' + member.display_name
+            await message.channel.send(str(number) + ' ' + to_send)
+
+
+        elif message.content == '!maybe':
+            to_send = 'members said MAYBE:'
+            number = 0
+            for member in message.guild.get_role(self.maybe_role_id).members:
                 number += 1
                 to_send += '\n' + member.display_name
             await message.channel.send(str(number) + ' ' + to_send)
@@ -468,6 +511,7 @@ Join the Stardew Gang: <:chicken:804147857719951431>''')
         elif message.content.startswith('!makegang'):
             for role in message.author.roles:
                 if role.name == "Server Admin":
+                    await self.tutorial(message, [('gang name', 'text')])
                     gang = message.content.replace('!makegang', '').strip().replace('gang', '')
                     new_role = await message.guild.create_role(name=gang + " Gang")
                     overwrites = {message.guild.default_role: PermissionOverwrite(read_messages=False),
@@ -524,7 +568,7 @@ Join the Stardew Gang: <:chicken:804147857719951431>
                     await message.channel.send(member.display_name + ' is hogging the server brain cell')
 
 
-        elif message.content.startswith('!think'):      #common cents
+        elif message.content.startswith('!think'):
             if message.guild.get_role(771408034957623348) in message.author.roles:
                 if self.think_lock == False:
                     await message.channel.send("🧠 This makes cents 🪙")
@@ -594,29 +638,24 @@ Join the Stardew Gang: <:chicken:804147857719951431>
 
 
         elif message.content.startswith('!give'):
+            await self.tutorial(message, [('username', 'text'), ('amount', 'number')])
             give_message = message.content.replace('!give', '').strip()
             #print(give_message)
             try:
                 give_re = search(r'(.+) (\d+)', give_message)
-                if not give_re:
-                    raise TypeError(give_message + ' has improper format')
+                assert give_re, give_message + ' has improper format'
                 give = (give_re.group(1), give_re.group(2))
-                if message.guild.get_member_named(give[0]) == None:
-                    raise ValueError("Member does not exist")
+                assert message.guild.get_member_named(give[0]) != None, "Member does not exist"
                 author_select = (str(message.author),)
                 self.c.execute('SELECT points FROM braincell_points WHERE name=?', author_select)
                 author_points = self.c.fetchone()
                 receive_select = (str(message.guild.get_member_named(give[0])),)
                 self.c.execute('SELECT points FROM braincell_points WHERE name=?', receive_select)
                 receive_points = self.c.fetchone()
-                if author_points == None:
-                    raise ValueError("You have no Common Cents")
-                if author_points[0] < int(give[1]):
-                    raise ValueError("You do not have enough Common Cents to give")
-                if int(give[1]) < 0:
-                    raise ValueError("You cannot gift negative points")
-                if str(message.author) == str(message.guild.get_member_named(give[0])):
-                    raise ValueError("You cannot gift to yourself")
+                assert author_points != None, "You have no Common Cents"
+                assert author_points[0] >= int(give[1]), "You do not have enough Common Cents to give"
+                assert int(give[1]) >= 0, "You cannot gift negative points"
+                assert str(message.author) != str(message.guild.get_member_named(give[0])), "You cannot gift to yourself"
                 author_replace = (str(message.author), author_points[0]-int(give[1]))
                 self.c.execute("REPLACE INTO braincell_points (name, points) VALUES (?, ?)", author_replace)
                 if receive_points == None:
@@ -628,7 +667,7 @@ Join the Stardew Gang: <:chicken:804147857719951431>
                 await message.channel.send("You have given " + give[1] + " Common Cents to " + give[0])
             except TypeError:
                 await message.channel.send("If you want to gift your Common Cents, be sure to type !give {nickname/username} {number}")
-            except ValueError as err:
+            except AssertionError as err:
                 await message.channel.send(err)
 
 
@@ -636,13 +675,14 @@ Join the Stardew Gang: <:chicken:804147857719951431>
 #--------------------------Events Calendar-----------------------------
 
         elif message.content.startswith('!addevent'):
+            await self.tutorial(message, [('event name', 'text'), ('date', 'mm/dd/yyyy'), ('time', '(H)H:MM*am/pm*'), ('optional gang name', 'text')])
             event_message = message.content.replace('!addevent', '').strip()
+            if not event_message:
+                await message.channel.send("To make an event, type !addevent *event name* mm/dd/yyyy (H)H:MM*am/pm* *gang (optional)*")
             try:
                 date_re = search(r'(.+) (\d\d)/(\d\d)/(\d\d\d\d) ((\d){1,2}:\d\d(am|pm))(.*)', event_message)
-                if not date_re:
-                    raise ValueError(event_message + ' does not have name, date, time')
-                if date_re.group(5)[0] == '0':
-                    raise ValueError(event_message + ' Invalid format: includes 0 at beginning of hour')
+                assert date_re, event_message + ' does not have name, date, time'
+                assert date_re.group(5)[0] != '0', event_message + ' Invalid format: includes 0 at beginning of hour'
                 if date_re.group(8) == '':
                     gang_insert = 'none'
                 else:
@@ -651,8 +691,8 @@ Join the Stardew Gang: <:chicken:804147857719951431>
                 self.c.execute('INSERT INTO calendar VALUES (?,?,?,?,?,?)', addevent_insert)
                 self.db.commit()
                 await message.channel.send("You have added " + date_re.group(1).strip() +" on "+ date_re.group(2) +"/"+ date_re.group(3) +"/"+ date_re.group(4) +" at "+ date_re.group(5) + " to the Calendar")
-            except:
-                await message.channel.send("To make an event, type !addevent *event name* mm/dd/yyyy (H)H:MM*am/pm* *gang (optional)*")
+            except AssertionError as err:
+                await message.channel.send(err)
 
 
         elif message.content.startswith('!events'):
@@ -672,6 +712,7 @@ Join the Stardew Gang: <:chicken:804147857719951431>
 
 
         elif message.content.startswith('!delevent'):
+            await self.tutorial(message, [('event name', 'text')])
             event_message = message.content.replace('!delevent', '').strip()
             self.c.execute("SELECT * FROM calendar")
             before_num = len(self.c.fetchall())
@@ -825,6 +866,7 @@ Join the Stardew Gang: <:chicken:804147857719951431>
 
 
         elif message.content.startswith("!bet"):
+            await self.tutorial(message, [('!casino bet name', 'text'), ('common cent amount', 'number')])
             bet_message = message.content.replace('!bet', '').strip()
             self.c.execute("SELECT outcome FROM casino")
             outcomes = self.c.fetchall()
@@ -835,8 +877,7 @@ Join the Stardew Gang: <:chicken:804147857719951431>
                     value_updated = True
                     pass
             try:
-                if value_updated == False:
-                    raise ValueError(value + "is not a valid bet outcome")
+                assert value_updated == True, value + "is not a valid bet outcome"
                 num = int(bet_message.replace(value, '').strip())
                 bet_select = (value,)
                 self.c.execute("SELECT bets FROM casino WHERE outcome=?", bet_select)
@@ -852,8 +893,7 @@ Join the Stardew Gang: <:chicken:804147857719951431>
                 robin_select = ("Robin Otto#7657",)
                 self.c.execute("SELECT points FROM braincell_points WHERE name=?", robin_select)
                 robin_points = self.c.fetchone()
-                if author_points[0] < num:
-                    raise ValueError("User bet more points than they had")
+                assert author_points[0] >= num, "User bet more points than they had"
                 subtract_replace = (str(message.author), author_points[0] - num)
                 self.c.execute("REPLACE INTO braincell_points VALUES (?,?)", subtract_replace)
                 robin_replace = ("Robin Otto#7657", robin_points[0] + num)
@@ -861,8 +901,8 @@ Join the Stardew Gang: <:chicken:804147857719951431>
                 self.c.execute("REPLACE INTO casino VALUES (?,?)", bet_replace)
                 self.db.commit()
                 await message.channel.send("Your bet has been placed")
-            except Exception as error:
-                await message.channel.send("Be sure to type !bet, the name of the bet in the !casino and the number of Common Cents that you want to bet. Warning: You can't take your bet back.")
+            except AssertionError as err:
+                await message.channel.send(err)
 
 
         elif message.content.startswith("!payout"):
@@ -983,11 +1023,10 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
 #--------------------------Poll---------------------------------------
 
         elif message.content.startswith("!poll"):
+            await self.tutorial(message, [('option name', 'text with :'), ('emoji', 'emoji')])
             try:
                 poll_message = message.content.replace('!poll', '').strip()
                 poll_re = search(r'((.+):(.+),)+((.+):(.+))', poll_message)
-                if not poll_re:
-                    raise ValueError(poll_message + " doesn't work for a poll")
                 to_send = message.author.display_name + " made a poll:"
                 emojis = []
                 for item in poll_re.groups():
@@ -1013,7 +1052,8 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
         elif message.content.startswith("!disconnect"):
             await self.vc_disconnect(message)
 
-        elif message.content.startswith("!say"):
+        elif message.content.startswith("!say"):    #requires input
+            await self.tutorial(message, [('speech content', 'text with no symbols')])
             say_content = message.content.replace("!say", '').strip()
             send(self.conn, "Send to:voice " + say_content)
             if self.voice_block == True:
@@ -1021,23 +1061,39 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
             else:
                 await self.vc_say(message)
 
+
         elif message.content.startswith("!sing"):
+            await self.tutorial(message, [('song', 'text or URL')])
             url = message.content.replace("!sing", '').strip()
-            if message.author.voice != None:
-                try:
-                    await self.vc_connect(message)
-                except:
-                    pass
             try:
-                title, url = await self.vc_play_song(url, message)
+                assert message.author.voice != None, "You must be connected to a voice channel to use !sing"
+                await self.vc_connect(message)
+                title_url = await self.vc_play_song(url, message)
+                if title_url != None:
+                    channel_id = str(message.author.voice.channel.id)
+                    self.song_queue.put((url,channel_id,message))
+                    await message.channel.send("Your song has been queued")
+            except AssertionError as err:
+                await message.channel.send(err)
             except Exception as err:
-                #print(err)   check if the right error
-                channel_id = str(message.author.voice.channel.id)
-                self.song_queue.put((url,channel_id,message))
-                await message.channel.send("Your song has been queued")
+                print(err)
+
 
         elif message.content.startswith("!stop"):
-            pass #skip current song and dump all songs from queue
+            #skip current song and dump all songs from queue
+            try:
+                channel_id = str(message.author.voice.channel.id)
+            except:
+                await message.channel.send("You are not in a voice channel")
+            try:
+                voice = self.vc[channel_id]
+            except:
+                await message.channel.send("Robin is not connected to your voice channel")
+            voice.stop()
+            with self.song_queue.mutex:
+                self.song_queue.queue.clear()
+            await message.channel.send("Robin's singing has stopped...")
+
 
 
         elif message.content.startswith('!skip'):
@@ -1080,6 +1136,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
             else:
                 await message.channel.send("No audio is paused")
 
+        #jukebox
         elif message.content.startswith('!upnext'):
             if self.next_song == None:
                 await message.channel.send("There is no queued song")
@@ -1092,6 +1149,201 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                 items = self.c.fetchall()
                 for item in items:
                     print(item[0] + " | " + item[1] + " | " + str(item[2]))
+
+        elif message.content.startswith('!radio'):
+            songs = {}
+            if message.author.voice != None:
+                try:
+                    await self.vc_connect(message)
+                except Exception as err:
+                    print(err)
+            try:
+                channel_id = str(message.author.voice.channel.id)
+            except:
+                await message.channel.send("You are not in a voice channel")
+            for member in self.vc[channel_id].channel.members:
+                self.c.execute('SELECT song, liked FROM music WHERE userid=?',(member.id,))
+                items = self.c.fetchall()
+                for item in items:
+                    adding = item[1]*2 - 1
+                    if item[0] in songs.keys():
+                        songs[item[0]] += adding
+                    else:
+                        songs[item[0]] = adding
+            best_song = max(songs, key=songs.get)
+            title_url = await self.vc_play_song(best_song, message)
+            if title_url != None:
+                self.song_queue.put((best_song,channel_id,message))
+                await message.channel.send(best_song + " has been queued")
+
+
+#--------------------------NFTs--------------------------------------
+
+        elif message.content.startswith('!sell'):
+            await self.tutorial(message, [('price', 'number'), ('NFT image', 'attached picture or GIF')])
+            message_content = message.content.replace("!sell", '').strip()
+            try:
+                price = int(message_content)
+                assert price > 0, "Price listed was not positive"
+                assert message.attachments != None, "NFT was not attached"
+                url = message.attachments[0].url
+                self.c.execute("SELECT COUNT(*) FROM nfts WHERE userid = ? AND price != ?", (str(message.author.id), 0))
+                amount = self.c.fetchone()[0]
+                assert amount < 3, "You already have the maximum amount of NFTs listed"
+                self.c.execute("SELECT MAX(id) FROM nfts")
+                id_max = self.c.fetchone()[0]
+                if id_max == None:
+                    id_max = 0
+                values = (id_max + 1, url, str(message.author.id), message_content)
+                self.c.execute("INSERT INTO nfts VALUES (?,?,?,?)", values)
+                await message.channel.send("Your NFT (NFT #" + str(id_max + 1) + ")  has been listed for " + str(message_content) + " cents")
+                self.db.commit()
+            except AssertionError as err:
+                await message.channel.send(err)
+            except ValueError as err:
+                await message.channel.send("A valid price was not listed")
+
+        elif message.content.startswith("!resell"):
+            await self.tutorial(message, [('NFT ID you own', 'number')])
+            id_price = message.content.replace("!resell", '').strip().split()
+            try:
+                self.c.execute("SELECT url, userid, price FROM nfts WHERE id = ?", (int(id_price[0]),))
+                nft_info = self.c.fetchone()
+                assert nft_info != None, "An NFT with that ID does not exist"
+                assert nft_info[1] == str(message.author.id), "You cannot sell someone else's NFT"
+                assert int(id_price[1]) > 0, "NFT price must be a positive number"
+                self.c.execute("SELECT COUNT(*) FROM nfts WHERE userid = ? AND price != ?", (str(message.author.id), 0))
+                amount = self.c.fetchone()[0]
+                assert amount < 3, "You already have the maximum amount of NFTs listed"
+                self.c.execute("REPLACE INTO nfts (id, url, userid, price) VALUES (?,?,?,?)", (id_price[0], nft_info[0], nft_info[1], id_price[1]))
+                self.db.commit()
+                await message.channel.send("You have relisted NFT #" + id_price[0])
+            except AssertionError as err:
+                await message.channel.send(err)
+
+        elif message.content.startswith("!shop"):
+            message_content = message.content.replace("!shop", '').strip()
+            try:
+                if message_content == '':
+                    owner = message.author
+                else:
+                    owner = message.guild.get_member_named(message_content)
+                assert owner != None, "Member does not exist"
+                self.c.execute("SELECT id, url, price FROM nfts WHERE userid = ?", (str(owner.id),))
+                items = self.c.fetchall()
+                await message.channel.send(owner.nick + "'s NFT shop includes:")
+                for item in items:
+                    if item[2] != 0:
+                        embed = Embed(title="NFT #" + str(item[0]), description="Listed for " + str(item[2]) + " Common Cents")
+                        embed.set_image(url=item[1])
+                        await message.channel.send(embed=embed)
+            except AssertionError as err:
+                await message.channel.send(err)
+            except ValueError as err:
+                await message.channel.send(err)
+
+        elif message.content.startswith("!buy"):
+            await self.tutorial(message, [('NFT ID', 'number')])
+            nft_id = message.content.replace("!buy", '').strip()
+            try:
+                self.c.execute("SELECT url, userid, price FROM nfts WHERE id = ?", (int(nft_id),))
+                nft_info = self.c.fetchone()
+                assert nft_info != None, "An NFT with that ID does not exist"
+                assert nft_info[2] != 0, "That NFT is not for sale"
+                assert nft_info[1] != str(message.author.id), "You cannot buy your own NFT"
+                self.c.execute("SELECT points FROM braincell_points WHERE name=?", (str(message.author),))
+                author_info = self.c.fetchone()
+                assert author_info != None, "You do not have any Common Cents"
+                assert author_info[0] >= nft_info[2], "You do not have enough Common Cents"
+                self.c.execute("REPLACE INTO braincell_points (name, points) VALUES (?,?)", (str(message.author), author_info[0] - nft_info[2]))
+                owner = self.get_user(int(nft_info[1]))
+                self.c.execute("SELECT points FROM braincell_points WHERE name=?", (str(owner),))
+                owner_points = self.c.fetchone()
+                if owner_points == None:
+                    points = nft_info[2]
+                else:
+                    points = owner_points[0] + nft_info[2]
+                self.c.execute("REPLACE INTO braincell_points (name, points) VALUES (?,?)", (str(owner), points))
+                self.c.execute("REPLACE INTO nfts (id, url, userid, price) VALUES (?,?,?,?)", (int(nft_id), nft_info[0], str(message.author.id), 0))
+                await message.channel.send("You have purchased NFT #" + nft_id + " from " + owner.name)
+                self.db.commit()
+            except AssertionError as err:
+                await message.channel.send(err)
+
+        elif message.content.startswith("!blockchain"):
+            self.c.execute("SELECT * FROM nfts")
+            items = self.c.fetchall()
+            for item in items:
+                if item[3] != 0:
+                    owner = self.get_user(int(item[2]))
+                    embed = Embed(title="NFT #" + str(item[0]), description="Listed for " + str(item[3]) + " Common Cents by " + owner.name)
+                    embed.set_image(url=item[1])
+                    await message.channel.send(embed=embed)
+
+        elif message.content.startswith("!collection"):
+            await self.tutorial(message, [('username', "user's nickname")])
+            message_content = message.content.replace("!collection", '').strip()
+            try:
+                if message_content == '':
+                    owner = message.author
+                else:
+                    owner = message.guild.get_member_named(message_content)
+                assert owner != None, "Member does not exist"
+                self.c.execute("SELECT id, url, price FROM nfts WHERE userid = ?", (str(owner.id),))
+                items = self.c.fetchall()
+                await message.channel.send(owner.nick + "'s NFT collection includes:")
+                for item in items:
+                    if item[2] == 0:
+                        embed = Embed(title="NFT #" + str(item[0]), description="Owned by " + owner.nick)
+                        embed.set_image(url=item[1])
+                        await message.channel.send(embed=embed)
+            except AssertionError as err:
+                await message.channel.send(err)
+            except ValueError as err:
+                await message.channel.send(err)
+
+        elif message.content.startswith("!unlist"):
+            await self.tutorial(message, [('NFT ID', 'number')])
+            message_content = message.content.replace("!unlist", '').strip()
+            try:
+                self.c.execute("SELECT url, userid FROM nfts WHERE id=?", (int(message_content),))
+                nft_info = self.c.fetchone()
+                assert nft_info != None, "The NFT ID you gave does not exist"
+                assert nft_info[1] == str(message.author.id), "You do not own this NFT"
+                self.c.execute("REPLACE INTO nfts (id, url, userid, price) VALUES (?,?,?,?)", (int(message_content), nft_info[0], str(message.author.id), 0))
+                self.db.commit()
+                await message.channel.send("You have returned NFT #" + message_content + " to your collection")
+            except AssertionError as err:
+                await message.channel.send(err)
+
+        elif message.content.startswith("!nft"):
+            await self.tutorial(message, [('NFT ID', 'number')])
+            message_content = message.content.replace("!nft", '').strip()
+            try:
+                self.c.execute("SELECT url, userid FROM nfts WHERE id=?", (int(message_content),))
+                nft_info = self.c.fetchone()
+                assert nft_info != None, "The NFT ID you gave does not exist"
+                owner = message.guild.get_member(int(nft_info[1]))
+                embed = Embed(title="NFT #" + str(message_content), description="Owned by " + owner.nick)
+                embed.set_image(url=nft_info[0])
+                await message.channel.send(embed=embed)
+            except AssertionError as err:
+                await message.channel.send(err)
+
+        elif message.content.startswith("!remove"):
+            await self.tutorial(message, [('NFT ID', 'number')])
+            message_content = message.content.replace("!remove", '').strip()
+            author = str(message.author.id)
+            try:
+                self.c.execute("SELECT price FROM nfts WHERE userid=? AND id=?", (author, int(message_content)))
+                nft = self.c.fetchone()
+                assert nft != None, "You do not own the NFT ID you gave"
+                assert nft[0] != 0, "This NFT is listed in your shop. Please !unlist your NFT before removing it"
+                self.c.execute("DELETE FROM nfts WHERE userid=? AND id=?", (author, int(message_content)))
+                self.db.commit()
+                await message.channel.send("You have removed NFT #" + message_content)
+            except AssertionError as err:
+                await message.channel.send(err)
 
 
 #--------------------------Misc---------------------------------------
@@ -1161,14 +1413,14 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
             await message.channel.send("I am alive. - Robin")
 
         elif message.content.startswith('!'):
-            self.c.execute("SELECT * FROM commands")
+            self.c.execute("SELECT * FROM commands")        # to be optimized
             commands = self.c.fetchall()
             for command in commands:
                 if message.content == command[0]:
                     await message.channel.send(command[1])
             self.db.commit()
 
-#-----------------------------------------------------------------------
+#----------------------------EVENTS-------------------------------------------
 
     async def on_reaction_add(self, reaction, user):
         #for !play requests
@@ -1176,22 +1428,24 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
             if reaction.emoji == "✅":
                 await user.add_roles(reaction.message.guild.get_role(self.yes_role_id))
                 await reaction.message.edit(content=reaction.message.content + '\n*' + user.display_name + '*')
-                checkmark_select = (reaction.message.channel.name,)
-                self.c.execute("SELECT yes FROM play_requests WHERE game=?", checkmark_select)
-                yes_list = self.c.fetchone()
-                yes_list = yes_list[0] + ' ' + str(user)
-                checkmark_update = (yes_list, reaction.message.channel.name)
-                self.c.execute("UPDATE play_requests SET yes = ? WHERE game = ?", checkmark_update)
-                self.db.commit()
+                #checkmark_select = (reaction.message.channel.name,)
+                #self.c.execute("SELECT yes FROM play_requests WHERE game=?", checkmark_select)
+                #yes_list = self.c.fetchone()
+                #yes_list = yes_list[0] + ' ' + str(user)
+                #checkmark_update = (yes_list, reaction.message.channel.name)
+                #self.c.execute("UPDATE play_requests SET yes = ? WHERE game = ?", checkmark_update)
+                #self.db.commit()
             if reaction.emoji == "❌":
                 await user.add_roles(reaction.message.guild.get_role(self.no_role_id))
-                xmark_select = (reaction.message.channel.name,)
-                self.c.execute("SELECT no FROM play_requests WHERE game=?", xmark_select)
-                no_list = self.c.fetchone()
-                no_list = no_list[0] + ' ' + str(user)
-                xmark_update = (no_list, reaction.message.channel.name)
-                self.c.execute("UPDATE play_requests SET yes = ? WHERE game = ?", xmark_update)
-                self.db.commit()
+                #xmark_select = (reaction.message.channel.name,)
+                #self.c.execute("SELECT no FROM play_requests WHERE game=?", xmark_select)
+                #no_list = self.c.fetchone()
+                #no_list = no_list[0] + ' ' + str(user)
+                #xmark_update = (no_list, reaction.message.channel.name)
+                #self.c.execute("UPDATE play_requests SET yes = ? WHERE game = ?", xmark_update)
+                #self.db.commit()
+            if reaction.emoji == "❓":
+                await user.add_roles(reaction.message.guild.get_role(self.maybe_role_id))
         #for !jeopardy games
         if reaction.message.content == "buzz" and self.jeopardy == True and self.jeopardy_host == user.name:
             if reaction.emoji == "✅":
@@ -1458,31 +1712,32 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                 await reaction.message.edit(content=to_send)
                 await reaction.remove(user)
 
-        if reaction.message.author == self.user and "Robin is now singing:" in reaction.message.embeds[0].title and user != self.user:
-            if str(reaction.emoji) == "👍":
-                song_name = reaction.message.embeds[0].description
-                values = (user.id, song_name)
-                self.c.execute("SELECT * FROM music WHERE userid=? AND song=?", values)
-                items = self.c.fetchall()
-                if len(items) > 0:
-                    values = (user.id, song_name, 1)
-                    self.c.execute("REPLACE INTO music (userid, song, liked) VALUES (?, ?, ?)", values)
-                else:
-                    values = (user.id, song_name, 1)
-                    self.c.execute("INSERT INTO music VALUES (?, ?, ?)", values)
-                self.db.commit()
-            if str(reaction.emoji) == "👎":
-                song_name = reaction.message.embeds[0].description
-                values = (user.id, song_name)
-                self.c.execute("SELECT * FROM music WHERE userid=? AND song=?", values)
-                items = self.c.fetchall()
-                if len(items) > 0:
-                    values = (user.id, song_name, 0)
-                    self.c.execute("REPLACE INTO music (userid, song, liked) VALUES (?, ?, ?)", values)
-                else:
-                    values = (user.id, song_name, 0)
-                    self.c.execute("INSERT INTO music VALUES (?, ?, ?)", values)
-                self.db.commit()
+        if reaction.message.author == self.user and len(reaction.message.embeds) != 0 and user != self.user:
+            if "Robin is now singing:" in reaction.message.embeds[0].title:
+                if str(reaction.emoji) == "👍":
+                    song_name = reaction.message.embeds[0].description
+                    values = (user.id, song_name)
+                    self.c.execute("SELECT * FROM music WHERE userid=? AND song=?", values)
+                    items = self.c.fetchall()
+                    if len(items) > 0:
+                        values = (user.id, song_name, 1)
+                        self.c.execute("REPLACE INTO music (userid, song, liked) VALUES (?, ?, ?)", values)
+                    else:
+                        values = (user.id, song_name, 1)
+                        self.c.execute("INSERT INTO music VALUES (?, ?, ?)", values)
+                    self.db.commit()
+                if str(reaction.emoji) == "👎":
+                    song_name = reaction.message.embeds[0].description
+                    values = (user.id, song_name)
+                    self.c.execute("SELECT * FROM music WHERE userid=? AND song=?", values)
+                    items = self.c.fetchall()
+                    if len(items) > 0:
+                        values = (user.id, song_name, 0)
+                        self.c.execute("REPLACE INTO music (userid, song, liked) VALUES (?, ?, ?)", values)
+                    else:
+                        values = (user.id, song_name, 0)
+                        self.c.execute("INSERT INTO music VALUES (?, ?, ?)", values)
+                    self.db.commit()
 #````````````````````MARKED FOR CLEANUP`````````````````````````
 
         if reaction.message.author == self.user and "React to Join a Role:" in reaction.message.content and user != self.user:
@@ -1557,22 +1812,24 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                 await user.remove_roles(reaction.message.guild.get_role(self.yes_role_id))
                 reaction_message = reaction.message.content.replace('\n*'+user.display_name+'*', '').strip()
                 await reaction.message.edit(content=reaction_message)
-                checkmark_select = (reaction.message.channel.name,)
-                self.c.execute("SELECT yes FROM play_requests WHERE game=?", checkmark_select)
-                yes_list = self.c.fetchone()
-                yes_list = yes_list[0].replace(str(user), '').strip()
-                checkmark_update = (yes_list, reaction.message.channel.name)
-                self.c.execute("UPDATE play_requests SET yes = ? WHERE game = ?", checkmark_update)
-                self.db.commit()
+                # checkmark_select = (reaction.message.channel.name,)
+                # self.c.execute("SELECT yes FROM play_requests WHERE game=?", checkmark_select)
+                # yes_list = self.c.fetchone()
+                # yes_list = yes_list[0].replace(str(user), '').strip()
+                # checkmark_update = (yes_list, reaction.message.channel.name)
+                # self.c.execute("UPDATE play_requests SET yes = ? WHERE game = ?", checkmark_update)
+                # self.db.commit()
             if reaction.emoji == "❌":
                 await user.remove_roles(reaction.message.guild.get_role(self.no_role_id))
-                xmark_select = (reaction.message.channel.name,)
-                self.c.execute("SELECT no FROM play_requests WHERE game=?", xmark_select)
-                no_list = self.c.fetchone()
-                no_list = no_list[0].replace(str(user), '').strip()
-                xmark_update = (no_list, reaction.message.channel.name)
-                self.c.execute("UPDATE play_requests SET yes = ? WHERE game = ?", xmark_update)
-                self.db.commit()
+                # xmark_select = (reaction.message.channel.name,)
+                # self.c.execute("SELECT no FROM play_requests WHERE game=?", xmark_select)
+                # no_list = self.c.fetchone()
+                # no_list = no_list[0].replace(str(user), '').strip()
+                # xmark_update = (no_list, reaction.message.channel.name)
+                # self.c.execute("UPDATE play_requests SET yes = ? WHERE game = ?", xmark_update)
+                # self.db.commit()
+            if reaction.emoji == "❓":
+                await user.remove_roles(reaction.message.guild.get_role(self.maybe_role_id))
         #for !poll
         if "made a poll:" in reaction.message.content and user != self.user:
             self.c.execute("SELECT emoji FROM emojis WHERE emoji = ?", str(reaction.emoji))
@@ -1588,6 +1845,18 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                             to_send = to_send + option + ':'
                     to_send = to_send[:-1]
                     await reaction.message.edit(content=to_send)
+        if reaction.message.author == self.user and len(reaction.message.embeds) != 0 and user != self.user:
+            if "Robin is now singing:" in reaction.message.embeds[0].title:
+                if str(reaction.emoji) == "👍":
+                    song_name = reaction.message.embeds[0].description
+                    values = (user.id, song_name, 1)
+                    self.c.execute("DELETE FROM music WHERE userid=? AND song=? AND liked=?", values)
+                    self.db.commit()
+                if str(reaction.emoji) == "👎":
+                    song_name = reaction.message.embeds[0].description
+                    values = (user.id, song_name, 0)
+                    self.c.execute("DELETE FROM music WHERE userid=? AND song=? AND liked=?", values)
+                    self.db.commit()
 
 
     async def on_member_join(self, member):
@@ -1600,10 +1869,12 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
     async def on_voice_state_update(self, member, before, after):
         try:
             if before.channel != None:                          #Tests if leaving vc
+                if member == self.user:                         #If Robin is leaving, remove from vc dict
+                    del self.vc[str(before.channel.id)]
                 if str(before.channel.id) in self.vc.keys():    #Tests if in vc with Robin
                     if len(before.channel.members) == 1:        #Tests if Robin is alone
                         await self.vc[str(before.channel.id)].disconnect()
-                        del self.vc[str(message.author.voice.channel.id)]
+                        del self.vc[str(before.channel.id)]
         except:
             pass
         try:
@@ -1616,6 +1887,8 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
             pass
 
 
+#--------------------FUNCTIONS------------------------
+
     async def post(self, channel_name, text):
         channels = self.text_channels
         channel = self.get_channel(channels[channel_name]) # channel ID goes here
@@ -1623,29 +1896,38 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
 
 
     async def vc_connect(self, message):
-        user = message.author
-        voice_channel = user.voice.channel
-        if str(user.voice.channel.id) in self.vc.keys():
-            pass
-        else:
-            if voice_channel != None:
+        try:
+            user = message.author
+            voice_channel = user.voice.channel
+            assert voice_channel != None, "You are not in a voice channel"
+            if str(user.voice.channel.id) in self.vc.keys():
+                pass
+            else:
+                for voice_client in self.voice_clients:
+                    if voice_client.guild == message.guild:
+                        assert not (voice_client.is_playing() or voice_client.is_paused()), "I am currently active in another voice channel. Thank you for your patience"
+                        await voice_client.disconnect()
+                        if str(message.author.voice.channel.id) in self.vc:
+                            del self.vc[str(message.author.voice.channel.id)]
+                        if message.id in self.waiting_channels:
+                            self.waiting_channels.remove(message.id)
                 voice_obj = await voice_channel.connect()
                 self.vc[str(user.voice.channel.id)] = voice_obj
                 #await message.channel.send('Robin has connected')
-            else:
-                await message.channel.send('You are not in a channel')
+        except AssertionError as err:
+            if message.id not in self.waiting_channels:
+                await message.channel.send(err)
+                self.waiting_channels.append(message.id)
+
+
 
     async def vc_disconnect(self, message):
         try:
-            if message.author.voice == None:
-                raise ValueError("User not in voice channel")
+            assert message.author.voice != None, "You must be in a voice channel with Robin to disconnect her"
             channel_id = str(message.author.voice.channel.id)
-            if channel_id not in self.vc.keys():
-                raise ValueError("User not in voice channel")
-            if self.vc[channel_id] == None:
-                raise ValueError("Robin is not connected")
-            if self.vc[channel_id].channel != message.author.voice.channel:
-                raise ValueError("User not in voice channel")
+            assert channel_id in self.vc.keys(), "You must be in a voice channel with Robin to disconnect her"
+            assert self.vc[channel_id] != None, 'Robin must !connect first'
+            assert self.vc[channel_id].channel == message.author.voice.channel, 'You must be in a voice channel with Robin to disconnect her'
             if self.vc[str(message.author.voice.channel.id)].is_connected():
                 await self.vc[str(message.author.voice.channel.id)].disconnect()
                 await message.channel.send('Robin has disconnected')
@@ -1653,30 +1935,22 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                 await message.channel.send('Robin is not in a channel')
             if str(message.author.voice.channel.id) in self.vc:
                 del self.vc[str(message.author.voice.channel.id)]
-        except ValueError as err:
-            if str(err) == "User not in voice channel":
-                await message.channel.send('You must be in a voice channel with Robin to disconnect her')
-            elif str(err) == "Robin is not connected":
-                await message.channel.send('Robin must !connect first')
+        except AssertionError as err:
+            await message.channel.send(err)
 
     async def vc_say(self, message):        #instead of message, make it channel
         self.voice_block = True
         try:
-            if message.author.voice == None:
-                raise ValueError("User not in voice channel")
+            assert message.author.voice != None, "You must be in a voice channel to use the !say command"
             channel_id = str(message.author.voice.channel.id)
-            if channel_id not in self.vc.keys():
-                raise ValueError("Robin is not connected")
-            if self.vc[channel_id] == None:
-                raise ValueError("Robin is not connected")
-            if self.vc[channel_id].channel != message.author.voice.channel:
-                raise ValueError("Robin is not connected")
+            assert channel_id in self.vc.keys(), "Robin is not connected"
+            assert self.vc[channel_id] != None, "Robin is not connected"
+            assert self.vc[channel_id].channel == message.author.voice.channel, "Robin is not connected"
 
             say_content = message.content.replace("!say", '').strip()
             for char in ['<', '>', ':', '"', '/', '\\', '|', '?', '*']:
                 say_content = say_content.replace(char, '')
-            if len(say_content) < 1 or len(say_content) > 255:
-                raise ValueError("Incorrect input length")
+            assert len(say_content) > 0 or len(say_content) < 255, 'Message must be 1-255 characters long'
 
             while not isfile(AUDIO_PATH+"/"+say_content+".mp3"):
                 await sleep(0.1)
@@ -1687,44 +1961,100 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                 if self.vc[channel_id] == None:
                     break
             remove(AUDIO_PATH+"/"+say_content+".mp3")
-        except ValueError as err:
-            if str(err) == "User not in voice channel":
-                message.channel.send("You must be in a voice channel to use the !say command")
-            elif str(err) == "Robin is not connected":
+        except AssertionError as err:
+            if str(err) == "Robin is not connected":
                 await self.vc_connect(message)
                 if self.vc[channel_id].channel == message.author.voice.channel:
                     await self.vc_say(message)
-            elif str(err) == "Incorrect input length":
-                message.channel.send('Message must be 1-255 characters long')
-            else:
-                print(err)
+            await message.channel.send(err)
         finally:
             self.voice_block = False
 
-    async def vc_play_song(self, url, message):
+    async def vc_play_song(self, url, message):     #Fix 403s
         #!sing
         player = await YTDLSource.from_url(url, loop=None, stream=True)
-        self.vc[str(message.author.voice.channel.id)].play(player, after=lambda e: print('Player error: %s' % e) if e else None)
-        embed = Embed(title="Robin is now singing:", description=f"{player.title}", url=player.url)
+        try:
+            self.vc[str(message.author.voice.channel.id)].play(player, after=lambda e: print('Player error: %s' % e) if e else None)
+        except Exception as err:
+            return (player.title, player.url)
+        minutes = player.duration // 60
+        seconds = player.duration % 60
+        embed = Embed(title="Robin is now singing:", description=f"{player.title} \n ({minutes} minutes {seconds} seconds)", url=player.url)
         current_song = await message.channel.send(embed=embed)
         await current_song.add_reaction('👍')
         await current_song.add_reaction('👎')
-        return (player.title, player.url)
+        return None
 
+    async def transaction(self, giver, receiver, value, message):    #self type, string, string, int, message
+        giver_member = str(message.guild.get_member_named(giver))
+        receiver_member = str(message.guild.get_member_named(receiver))
+        try:
+            assert giver_member != None, "Member does not exist"
+            assert receiver_member != None, "Member does not exist"
+            assert value >= 0, "You cannot gift negative points"
+            assert giver_member != receiver_member, "You cannot gift to yourself"
+            giver_select = (giver_member,)
+            self.c.execute('SELECT points FROM braincell_points WHERE name=?', giver_select)
+            giver_points = self.c.fetchone()
+            receive_select = (receiver_member,)
+            self.c.execute('SELECT points FROM braincell_points WHERE name=?', receive_select)
+            receive_points = self.c.fetchone()
+            assert author_points != None, "You have no Common Cents"
+            assert author_points[0] >= value, "You do not have enough Common Cents to give"
+            author_replace = (giver_member, author_points[0]-value)
+            self.c.execute("REPLACE INTO braincell_points (name, points) VALUES (?, ?)", author_replace)
+            if receive_points == None:
+                receive_replace = (receiver_member, value)
+            else:
+                receive_replace = (receiver_member, receive_points[0]+value)
+            self.c.execute("REPLACE INTO braincell_points (name, points) VALUES (?, ?)", receive_replace)
+            self.db.commit()
+            return "You have given " + value + " Common Cents to " + receiver
+        except AssertionError as err:
+            await message.channel.send(err)
+
+    async def tutorial(self, message, options):
+        if ' ' not in message.content.strip():
+            to_send = message.content + ': Use of ' + message.content + ' requires'
+            for option in options:
+                to_send += ' ['
+                to_send += option[0]
+                to_send += '] ('
+                to_send += option[1]
+                to_send += ')'
+                if option != options[-1]:
+                    to_send += ','
+            await message.channel.send(to_send)
+
+
+
+#-----------------------LOOPS-------------------------------
 
     @loop(seconds = 1)
     async def jukebox(self):
         if not self.song_queue.empty():
-            print("test1")
+            print("test 1")
             if self.next_song == None:
                 self.next_song = self.song_queue.get()  #self.next_song: (url, channel_id, message)
+                print("test 2")
         if self.next_song != None:
-            voice_client = self.vc[self.next_song[1]]
-            if voice_client.is_connected() and not (voice_client.is_playing() or voice_client.is_paused()):
-                print("test3")
-                await self.vc_play_song(self.next_song[0], self.next_song[2])
-                self.next_song = None
-                print("test4")
+            print("test 3")
+            if self.next_song[1] in self.vc.keys():
+                print("test 4")
+                voice_client = self.vc[self.next_song[1]]
+                if voice_client.is_connected() and not (voice_client.is_playing() or voice_client.is_paused()):
+                    print("test 5")
+                    await self.vc_play_song(self.next_song[0], self.next_song[2])
+                    self.next_song = None
+            else:
+                if len(self.next_song[2].author.voice.channel.members) < 1:        #Tests if Robin is alone
+                    print("test 6")
+                    await self.vc_disconnect(self.next_song[2])
+                    with self.song_queue.mutex:
+                        self.song_queue.queue.clear()
+                else:
+                    await self.vc_connect(self.next_song[2])
+                    print("test 7")
 
 
     @loop(seconds = 5)
