@@ -72,10 +72,10 @@ ffmpeg_options = {
 ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
 
 class Bandit():
-    def __init__(self, channel_members, data=None, cursor=None):
+    def __init__(self, channel_members, data=None, cursor=None):    #TODO: preload data
         self.channel_members = channel_members
         self.data = data
-        self.options = [self.popularity]
+        self.c = cursor
         self.played = []
 
     def nn(self):
@@ -89,8 +89,8 @@ class Bandit():
             for song in self.played:
                 statement += " AND NOT song=?"
                 input_tuple = input_tuple + (song,)
-            cursor.execute(statement, input_tuple) #get every song
-            items = cursor.fetchall()
+            self.c.execute(statement, input_tuple) #get every song
+            items = self.c.fetchall()
             for item in items:
                 adding = item[1]*2 - 1
                 if item[0] in songs.keys():
