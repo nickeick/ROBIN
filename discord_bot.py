@@ -8,7 +8,7 @@ from queue import Queue
 from random import randint
 from sqlite3 import connect
 from re import search
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from time import localtime, strftime
 from client import start, get_msg, send
 from os.path import isfile
@@ -71,6 +71,40 @@ ffmpeg_options = {
 
 ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
 
+class Bandit():
+    def __init__(self, channel_members, data=None, cursor=None):
+        self.channel_members = channel_members
+        self.data = data
+        self.options = [self.popularity]
+        self.played = []
+
+    def nn(self):
+        pass
+
+    def popularity(self):
+        songs = {}
+        for member in self.channel_members:
+            statement = 'SELECT song, liked FROM music WHERE userid=?'
+            input_tuple = (member.id,)
+            for song in self.played:
+                statement += " AND NOT song=?"
+                input_tuple = input_tuple + (song,)
+            cursor.execute(statement, input_tuple) #get every song
+            items = cursor.fetchall()
+            for item in items:
+                adding = item[1]*2 - 1
+                if item[0] in songs.keys():
+                    songs[item[0]] += adding
+                else:
+                    songs[item[0]] = adding
+        best_song = max(songs, key=songs.get)   #get the song in the dict with the largest value
+        self.played.append(best_song)
+        return best_song
+
+    def get_song(self):
+        return self.popularity()
+
+
 
 class YTDLSource(PCMVolumeTransformer):
     def __init__(self, source, *, data, volume=0.5):
@@ -102,7 +136,7 @@ class MyClient(Client):
         self.client = Client
         self.queue = queue
         self.voice_queue = Queue()
-        self.song_queue = Queue()
+        self.song_queue = []
         self.next_song = None
         self.voice_block = False
         self.db = connect(DATABASE_PATH)
@@ -1071,7 +1105,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                 title_url = await self.vc_play_song(url, message)
                 if title_url != None:
                     channel_id = str(message.author.voice.channel.id)
-                    self.song_queue.put((url,channel_id,message))
+                    self.song_queue = [(url,channel_id,message)] + self.song_queue
                     await message.channel.send("Your song has been queued")
             except AssertionError as err:
                 await message.channel.send(err)
@@ -1090,8 +1124,8 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
             except:
                 await message.channel.send("Robin is not connected to your voice channel")
             voice.stop()
-            with self.song_queue.mutex:
-                self.song_queue.queue.clear()
+            self.song_queue = []
+            self.next_song = None
             await message.channel.send("Robin's singing has stopped...")
 
 
@@ -1151,7 +1185,6 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                     print(item[0] + " | " + item[1] + " | " + str(item[2]))
 
         elif message.content.startswith('!radio'):
-            songs = {}
             if message.author.voice != None:
                 try:
                     await self.vc_connect(message)
@@ -1161,20 +1194,28 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                 channel_id = str(message.author.voice.channel.id)
             except:
                 await message.channel.send("You are not in a voice channel")
-            for member in self.vc[channel_id].channel.members:
-                self.c.execute('SELECT song, liked FROM music WHERE userid=?',(member.id,))
-                items = self.c.fetchall()
-                for item in items:
-                    adding = item[1]*2 - 1
-                    if item[0] in songs.keys():
-                        songs[item[0]] += adding
-                    else:
-                        songs[item[0]] = adding
-            best_song = max(songs, key=songs.get)
-            title_url = await self.vc_play_song(best_song, message)
-            if title_url != None:
-                self.song_queue.put((best_song,channel_id,message))
-                await message.channel.send(best_song + " has been queued")
+            recommender = Bandit(self.vc[channel_id].channel.members, cursor=self.c)
+            while True:
+                best_song = recommender.get_song()
+                title_url = await self.vc_play_song(best_song, message)
+                await message.channel.send("Robin is playing songs...")
+                if title_url != None:
+                    while voice.is_playing():
+                        if voice.is_connected() == False:
+                            break
+                        async with message.channel.typing():
+                            await asyncio.sleep(1)
+
+        elif message.content.startswith('!queue'):
+            if self.next_song != None:
+                to_send = 'Up next: ' + self.next_song[0] + ' in ' + self.get_channel(int(self.next_song[1])).name
+                item_num = 1
+                for song in self.song_queue:
+                    item_num += 1
+                    to_send += '\n' + str(item_num) + '. '+ song[0] + ' in ' + self.get_channel(int(song[1])).name
+                await message.channel.send(to_send)
+            else:
+                await message.channel.send('There are no songs in queue')
 
 
 #--------------------------NFTs--------------------------------------
@@ -1349,7 +1390,17 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
 #--------------------------Misc---------------------------------------
 
         elif message.content.startswith('!whenjoin'):
-            await message.channel.send(message.author.joined_at)
+            year = str(message.author.joined_at.year)
+            month = str(message.author.joined_at.month)
+            day = str(message.author.joined_at.day)
+            hour = str(message.author.joined_at.hour)
+            minute = str(message.author.joined_at.minute)
+            second = str(message.author.joined_at.second)
+            await message.channel.send(month + '/' + day + '/' + year + ' (m/d/y) at ' + hour + ':' + minute + ':' + second + ' GMT')
+
+        elif message.content.startswith('!howlong'):
+            diff = datetime.now() - message.author.joined_at
+            await message.channel.send('You have been in the Dojo for ' + str(diff.days) + ' days')
 
         elif message.content.startswith('!nicksleep'):
             self.c.execute("SELECT count FROM counters WHERE counter = ?", ("nick_sleep",))
@@ -1372,7 +1423,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
             await self.vc_connect(message)
             try:
                 channel_id = str(message.author.voice.channel.id)
-                self.song_queue.put(('https://www.youtube.com/watch?v=Gl6ekgobG2k&ab_channel=ReptileLegitYT',channel_id,message))
+                self.song_queue = [('https://www.youtube.com/watch?v=Gl6ekgobG2k&ab_channel=ReptileLegitYT',channel_id,message)] + self.song_queue
             except:
                 pass
 
@@ -1380,7 +1431,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
             await self.vc_connect(message)
             try:
                 channel_id = str(message.author.voice.channel.id)
-                self.song_queue.put(('https://www.youtube.com/watch?v=ykLDTsfnE5A&ab_channel=J7ck2',channel_id,message))
+                self.song_queue = [('https://www.youtube.com/watch?v=ykLDTsfnE5A&ab_channel=J7ck2',channel_id,message)] + self.song_queue
             except:
                 pass
 
@@ -2032,10 +2083,10 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
 
     @loop(seconds = 1)
     async def jukebox(self):
-        if not self.song_queue.empty():
+        if len(self.song_queue) != 0:
             print("test 1")
             if self.next_song == None:
-                self.next_song = self.song_queue.get()  #self.next_song: (url, channel_id, message)
+                self.next_song = self.song_queue.pop(0)  #self.next_song: (url, channel_id, message)
                 print("test 2")
         if self.next_song != None:
             print("test 3")
@@ -2050,8 +2101,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                 if len(self.next_song[2].author.voice.channel.members) < 1:        #Tests if Robin is alone
                     print("test 6")
                     await self.vc_disconnect(self.next_song[2])
-                    with self.song_queue.mutex:
-                        self.song_queue.queue.clear()
+                    self.song_queue = []
                 else:
                     await self.vc_connect(self.next_song[2])
                     print("test 7")
