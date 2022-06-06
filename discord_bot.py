@@ -206,6 +206,8 @@ class MyClient(Client):
 
         elif message.content.startswith('!execute'):
             if str(message.author) == 'nickeick#9008':
+                self.c.execute("DELETE FROM music WHERE song LIKE ? AND song LIKE ?",('minutes', 'seconds'))
+                #self.db.commit()
                 #com_message = message.content.replace('!execute', '').strip()
                 #self.c.execute("SELECT * from commands WHERE output = ?" (com_message,))
                 #commands (command_name, output, author)
@@ -1194,7 +1196,11 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                 channel_id = str(message.author.voice.channel.id)
             except:
                 await message.channel.send("You are not in a voice channel")
-            recommender = Bandit(self.vc[channel_id].channel.members, cursor=self.c)
+            try:
+                voice = self.vc[channel_id]
+            except:
+                await message.channel.send("Robin is not connected to your voice channel")
+            recommender = Bandit(voice.channel.members, cursor=self.c)
             while True:
                 best_song = recommender.get_song()
                 title_url = await self.vc_play_song(best_song, message)
@@ -2030,7 +2036,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
             return (player.title, player.url)
         minutes = player.duration // 60
         seconds = player.duration % 60
-        embed = Embed(title="Robin is now singing:", description=f"{player.title} \n ({minutes} minutes {seconds} seconds)", url=player.url)
+        embed = Embed(title="Robin is now singing:", description=f"{player.title}", footer=f"({minutes} minutes {seconds} seconds)", url=player.url)
         current_song = await message.channel.send(embed=embed)
         await current_song.add_reaction('👍')
         await current_song.add_reaction('👎')
