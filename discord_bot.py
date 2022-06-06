@@ -206,7 +206,7 @@ class MyClient(Client):
 
         elif message.content.startswith('!execute'):
             if str(message.author) == 'nickeick#9008':
-                self.c.execute("DELETE FROM music WHERE song LIKE ? AND song LIKE ?",('minutes', 'seconds'))
+                self.c.execute("DELETE FROM music WHERE song LIKE ? AND song LIKE ?",('%minutes%', '%seconds%'))
                 #self.db.commit()
                 #com_message = message.content.replace('!execute', '').strip()
                 #self.c.execute("SELECT * from commands WHERE output = ?" (com_message,))
