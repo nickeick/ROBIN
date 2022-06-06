@@ -1201,16 +1201,17 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
             except:
                 await message.channel.send("Robin is not connected to your voice channel")
             recommender = Bandit(voice.channel.members, cursor=self.c)
+            await message.channel.send("Robin is in radio mode... (Use !stop to return to normal)")
             while True:
                 best_song = recommender.get_song()
                 title_url = await self.vc_play_song(best_song, message)
-                await message.channel.send("Robin is playing songs...")
+                await sleep(1)
                 if title_url != None:
-                    while voice.is_playing():
+                    while voice.is_playing() or voice.is_paused():
                         if voice.is_connected() == False:
                             break
                         async with message.channel.typing():
-                            await asyncio.sleep(1)
+                            await sleep(1)
 
         elif message.content.startswith('!queue'):
             if self.next_song != None:
