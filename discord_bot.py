@@ -71,38 +71,26 @@ ffmpeg_options = {
 
 ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
 
+#!radio
 class Bandit():
-    def __init__(self, channel_members, data=None, cursor=None):    #TODO: preload data
-        self.channel_members = channel_members
+    def __init__(self, data):    #TODO: preload data
         self.data = data
-        self.c = cursor
         self.played = []
 
     def nn(self):
         pass
 
     def popularity(self):
-        songs = {}
-        for member in self.channel_members:
-            statement = 'SELECT song, liked FROM music WHERE userid=?'
-            input_tuple = (member.id,)
-            for song in self.played:
-                statement += " AND NOT song=?"
-                input_tuple = input_tuple + (song,)
-            self.c.execute(statement, input_tuple) #get every song
-            items = self.c.fetchall()
-            for item in items:
-                adding = item[1]*2 - 1
-                if item[0] in songs.keys():
-                    songs[item[0]] += adding
-                else:
-                    songs[item[0]] = adding
-        best_song = max(songs, key=songs.get)   #get the song in the dict with the largest value
-        self.played.append(best_song)
+        temp_data = self.data
+        for song in played:
+            del temp_data[song]
+        best_song = max(temp_data, key=temp_data.get)   #get the song in the dict with the largest value
         return best_song
 
     def get_song(self):
-        return self.popularity()
+        song = self.popularity()
+        self.played.append(song)
+        return song
 
 
 
@@ -1200,10 +1188,23 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                 voice = self.vc[channel_id]
             except:
                 await message.channel.send("Robin is not connected to your voice channel")
-            recommender = Bandit(voice.channel.members, cursor=self.c)
+            songs = {}
+            for member in voice.channel.members:
+                statement = 'SELECT song, liked FROM music WHERE userid=?'
+                input_tuple = (member.id,)
+                self.c.execute(statement, input_tuple) #get every song
+                items = self.c.fetchall()
+                for item in items:
+                    adding = item[1]*2 - 1
+                    if item[0] in songs.keys():
+                        songs[item[0]] += adding
+                    else:
+                        songs[item[0]] = adding
+            recommender = Bandit(songs)
             await message.channel.send("Robin is in radio mode... (Use !stop to return to normal)")
             while True:
                 best_song = recommender.get_song()
+                self.next_song = (best_song, str(message.author.voice.channel.id), message) #self.next_song: (url, channel_id, message)
                 title_url = await self.vc_play_song(best_song, message)
                 await sleep(1)
                 if title_url != None:
