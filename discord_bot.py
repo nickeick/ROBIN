@@ -107,7 +107,7 @@ class YTDLSource(PCMVolumeTransformer):
     async def from_url(cls, url, *, loop=None, stream=False):
         loop = loop or get_event_loop()
         data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
-        
+
         if data:
             if 'entries' in data:
                 # take first item from a playlist
@@ -1213,6 +1213,8 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                             break
                         async with message.channel.typing():
                             await sleep(1)
+                else:
+                    break
 
         elif message.content.startswith('!queue'):
             if self.next_song != None:
