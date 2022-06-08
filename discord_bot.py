@@ -1201,17 +1201,20 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                         songs[item[0]] = adding
             recommender = Bandit(songs)
             await message.channel.send("Robin is now in Radio mode... (Use !stop to return to normal)")
-            song_object = None
+            song_playing = False
             while True:
-                if not (self.next_song != None or len(self.song_queue) > 0):
+                if not song_playing:
                     best_song = recommender.get_song()
-                    self.song_queue = [(best_song, str(message.author.voice.channel.id), message)] + self.song_queue
-                    #song_object = await self.vc_play_song(best_song, message)   #Returns None if played, (title, url) if queued
+                    #self.song_queue = [(best_song, str(message.author.voice.channel.id), message)] + self.song_queue
+                    await self.vc_play_song(best_song, message)   #Returns None if played, (title, url) if queued
+                    song_playing = True
                     await sleep(1)
                 else:
                     if voice.is_playing() or voice.is_paused():
                         async with message.channel.typing():
                             await sleep(1)
+                    else:
+                        song_object = False
                     if not voice.is_connected():
                         break
             await message.channel.send("Robin has returned to Request mode")
