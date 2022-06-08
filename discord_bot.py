@@ -93,7 +93,6 @@ class Bandit():
         return song
 
 
-
 class YTDLSource(PCMVolumeTransformer):
     def __init__(self, source, *, data, volume=0.5):
         super().__init__(source, volume)
@@ -108,12 +107,13 @@ class YTDLSource(PCMVolumeTransformer):
     async def from_url(cls, url, *, loop=None, stream=False):
         loop = loop or get_event_loop()
         data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
+        
+        if data:
+            if 'entries' in data:
+                # take first item from a playlist
+                data = data['entries'][0]
 
-        if 'entries' in data:
-            # take first item from a playlist
-            data = data['entries'][0]
-
-        filename = data['url'] if stream else ytdl.prepare_filename(data)
+            filename = data['url'] if stream else ytdl.prepare_filename(data)
         return cls(FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
 
 
