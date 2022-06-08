@@ -1203,9 +1203,9 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
             await message.channel.send("Robin is now in Radio mode... (Use !stop to return to normal)")
             song_object = None
             while True:
-                if self.next_song == None:
+                if not (self.next_song != None or len(self.song_queue) > 0):
                     best_song = recommender.get_song()
-                    self.next_song = (best_song, str(message.author.voice.channel.id), message) #self.next_song: (url, channel_id, message)
+                    self.song_queue = [(best_song, str(message.author.voice.channel.id), message)] + self.song_queue
                     #song_object = await self.vc_play_song(best_song, message)   #Returns None if played, (title, url) if queued
                     await sleep(1)
                 else:
