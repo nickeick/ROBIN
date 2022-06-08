@@ -1214,7 +1214,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                         async with message.channel.typing():
                             await sleep(1)
                     else:
-                        song_object = False
+                        song_playing = False
                     if not voice.is_connected():
                         break
             await message.channel.send("Robin has returned to Request mode")
