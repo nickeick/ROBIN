@@ -81,7 +81,7 @@ class Bandit():
         pass
 
     def popularity(self):
-        temp_data = self.data
+        temp_data = self.data.copy()
         for song in self.played:
             del temp_data[song]
         best_song = max(temp_data, key=temp_data.get)   #get the song in the dict with the largest value
