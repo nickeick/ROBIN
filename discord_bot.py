@@ -1480,7 +1480,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
             for member in message.guild.members:
                 num += 1
                 if rando == num:
-                    await message.channel.send(member.nick + " is a nerd")
+                    await message.channel.send(member.display_name + " is a nerd")
 
         elif message.content.startswith('!icon'):
             await message.channel.send("", file=File("dojo.png"))
