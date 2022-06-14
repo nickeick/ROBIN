@@ -1233,14 +1233,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                 await message.channel.send('There are no songs in queue')
 
         elif message.content.startswith('!loop'):
-            try:
-                channel_id = str(message.author.voice.channel.id)
-            except:
-                await message.channel.send("You are not in a voice channel")
-            try:
-                voice = self.vc[channel_id]
-            except:
-                await message.channel.send("Robin is not connected to your voice channel")
+            voice = await self.vc_get_obj(message)
             if not self.looping:
                 if (voice.is_playing() or voice.is_paused()) and self.playing != None:
                     self.looping = True
@@ -1249,7 +1242,8 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                         while voice.is_playing() or voice.is_paused():
                             async with message.channel.typing():
                                 await sleep(1)
-                        await self.vc_play_song(self.playing, message)
+                        if self.looping:
+                            await self.vc_play_song(self.playing, message)
                 else:
                     await message.channel.send("Robin isn't singing a song right now")
             else:
@@ -1479,6 +1473,14 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
             answers = ['Absolutely will happen!', 'Maybe someday...', 'Probably I guess', 'Yes, definitely', "I don't know dude", "I can't tell", 'The answer is no', 'It looks doubtful', "Don't count on it", 'No']
             ans = randint(0, len(answers))
             await message.channel.send(answers[ans])
+
+        elif message.content.startswith('!nerd'):
+            rando = randint(1,len(message.guild.members))
+            num = 0
+            for member in message.guild.members:
+                num += 1
+                if rando == num:
+                    await message.channel.send(member.nick + " is a nerd")
 
         elif message.content.startswith('!icon'):
             await message.channel.send("", file=File("dojo.png"))
