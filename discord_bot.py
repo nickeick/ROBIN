@@ -126,7 +126,7 @@ class MyClient(Client):
         self.song_queue = []
         self.next_song = None
         self.playing = None
-        self.loop = False
+        self.looping = False
         self.voice_block = False
         self.db = connect(DATABASE_PATH)
         self.c = None
@@ -1241,11 +1241,11 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                 voice = self.vc[channel_id]
             except:
                 await message.channel.send("Robin is not connected to your voice channel")
-            if not self.loop:
+            if not self.looping:
                 if (voice.is_playing() or voice.is_paused()) and self.playing != None:
-                    self.loop = True
+                    self.looping = True
                     await message.channel.send('Robin is looping the current song...')
-                    while self.loop:
+                    while self.looping:
                         while voice.is_playing() or voice.is_paused():
                             async with message.channel.typing():
                                 await sleep(1)
@@ -1253,7 +1253,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                 else:
                     await message.channel.send("Robin isn't singing a song right now")
             else:
-                self.loop = False
+                self.looping = False
                 await message.channel.send('Robin has stopped looping')
 
 
@@ -2011,7 +2011,6 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                 self.waiting_channels.append(message.id)
 
 
-
     async def vc_disconnect(self, message):
         try:
             assert message.author.voice != None, "You must be in a voice channel with Robin to disconnect her"
@@ -2028,6 +2027,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                 del self.vc[str(message.author.voice.channel.id)]
         except AssertionError as err:
             await message.channel.send(err)
+
 
     async def vc_say(self, message):        #instead of message, make it channel
         self.voice_block = True
@@ -2061,6 +2061,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
         finally:
             self.voice_block = False
 
+
     async def vc_play_song(self, url, message):     #Fix 403s
         #!sing
         player = await YTDLSource.from_url(url, loop=None, stream=True)
@@ -2076,6 +2077,19 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
         await current_song.add_reaction('👍')
         await current_song.add_reaction('👎')
         return None
+
+
+    async def vc_get_obj(self, message):
+        try:
+            channel_id = str(message.author.voice.channel.id)
+        except:
+            await message.channel.send("You are not in a voice channel")
+        try:
+            voice = self.vc[channel_id]
+        except:
+            await message.channel.send("Robin is not connected to your voice channel")
+        return voice
+
 
     async def transaction(self, giver, receiver, value, message):    #self type, string, string, int, message
         giver_member = str(message.guild.get_member_named(giver))
@@ -2134,7 +2148,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
             if self.next_song[1] in self.vc.keys():
                 print("test 4")
                 voice_client = self.vc[self.next_song[1]]
-                if voice_client.is_connected() and not (voice_client.is_playing() or voice_client.is_paused()):
+                if voice_client.is_connected() and not (voice_client.is_playing() or voice_client.is_paused() and not self.looping):
                     print("test 5")
                     await self.vc_play_song(self.next_song[0], self.next_song[2])
                     self.next_song = None
