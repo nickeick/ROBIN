@@ -125,6 +125,8 @@ class MyClient(Client):
         self.voice_queue = Queue()
         self.song_queue = []
         self.next_song = None
+        self.playing = None
+        self.loop = False
         self.voice_block = False
         self.db = connect(DATABASE_PATH)
         self.c = None
@@ -1230,6 +1232,31 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
             else:
                 await message.channel.send('There are no songs in queue')
 
+        elif message.content.startswith('!loop'):
+            try:
+                channel_id = str(message.author.voice.channel.id)
+            except:
+                await message.channel.send("You are not in a voice channel")
+            try:
+                voice = self.vc[channel_id]
+            except:
+                await message.channel.send("Robin is not connected to your voice channel")
+            if not self.loop:
+                if (voice.is_playing() or voice.is_paused()) and self.playing != None:
+                    self.loop = True
+                    await message.channel.send('Robin is looping the current song...')
+                    while self.loop:
+                        while voice.is_playing() or voice.is_paused():
+                            async with message.channel.typing():
+                                await sleep(1)
+                        await self.vc_play_song(self.playing, message)
+                else:
+                    await message.channel.send("Robin isn't singing a song right now")
+            else:
+                self.loop = False
+                await message.channel.send('Robin has stopped looping')
+
+
 
 #--------------------------NFTs--------------------------------------
 
@@ -2045,6 +2072,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
         seconds = player.duration % 60
         embed = Embed(title="Robin is now singing:", description=f"{player.title}", footer=f"({minutes} minutes {seconds} seconds)", url=player.url)
         current_song = await message.channel.send(embed=embed)
+        self.playing = url
         await current_song.add_reaction('👍')
         await current_song.add_reaction('👎')
         return None
