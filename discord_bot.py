@@ -74,8 +74,8 @@ ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
 #!radio
 class Bandit():
     def __init__(self, data):    #TODO: preload data
-        self.data = data
-        self.played = []
+        self.data = data    # A dictionary of songs and people who've liked them
+        self.played = []    # A list of songs already played so far
 
     def nn(self):
         pass
@@ -702,9 +702,8 @@ Join the Stardew Gang: <:chicken:804147857719951431>
         elif message.content.startswith('!addevent'):
             await self.tutorial(message, [('event name', 'text'), ('date', 'mm/dd/yyyy'), ('time', '(H)H:MM*am/pm*'), ('optional gang name', 'text')])
             event_message = message.content.replace('!addevent', '').strip()
-            if not event_message:
-                await message.channel.send("To make an event, type !addevent *event name* mm/dd/yyyy (H)H:MM*am/pm* *gang (optional)*")
             try:
+                assert event_message != '', "To make an event, type !addevent *event name* mm/dd/yyyy (H)H:MM*am/pm* *gang (optional)*"
                 date_re = search(r'(.+) (\d\d)/(\d\d)/(\d\d\d\d) ((\d){1,2}:\d\d(am|pm))(.*)', event_message)
                 assert date_re, event_message + ' does not have name, date, time'
                 assert date_re.group(5)[0] != '0', event_message + ' Invalid format: includes 0 at beginning of hour'
@@ -750,10 +749,6 @@ Join the Stardew Gang: <:chicken:804147857719951431>
                 await message.channel.send("Successfully deleted " + event_message + " event")
             else:
                 await message.channel.send("No such event exists, be sure to type !delevent *event name*")
-
-
-        elif message.content.startswith("!thisweek"):
-            pass
 
 
         elif message.content.startswith("!today"):
@@ -1106,14 +1101,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
 
         elif message.content.startswith("!stop"):
             #skip current song and dump all songs from queue
-            try:
-                channel_id = str(message.author.voice.channel.id)
-            except:
-                await message.channel.send("You are not in a voice channel")
-            try:
-                voice = self.vc[channel_id]
-            except:
-                await message.channel.send("Robin is not connected to your voice channel")
+            voice = await self.vc_get_obj(message)
             voice.stop()
             self.song_queue = []
             self.next_song = None
@@ -1122,40 +1110,19 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
 
 
         elif message.content.startswith('!skip'):
-            try:
-                channel_id = str(message.author.voice.channel.id)
-            except:
-                await message.channel.send("You are not in a voice channel")
-            try:
-                voice = self.vc[channel_id]
-            except:
-                await message.channel.send("Robin is not connected to your voice channel")
+            voice = await self.vc_get_obj(message)
             voice.stop()
             await message.channel.send("Skipping song...")
 
         elif message.content.startswith('!pause'):
-            try:
-                channel_id = str(message.author.voice.channel.id)
-            except:
-                await message.channel.send("You are not in a voice channel")
-            try:
-                voice = self.vc[channel_id]
-            except:
-                await message.channel.send("Robin is not connected to your voice channel")
+            voice = await self.vc_get_obj(message)
             if voice.is_playing():
                 voice.pause()
             else:
                 await message.channel.send("No audio is playing")
 
         elif message.content.startswith('!resume'):
-            try:
-                channel_id = str(message.author.voice.channel.id)
-            except:
-                await message.channel.send("You are not in a voice channel")
-            try:
-                voice = self.vc[channel_id]
-            except:
-                await message.channel.send("Robin is not connected to your voice channel")
+            voice = await self.vc_get_obj(message)
             if voice.is_paused():
                 voice.resume()
             else:
@@ -1181,14 +1148,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                     await self.vc_connect(message)
                 except Exception as err:
                     print(err)
-            try:
-                channel_id = str(message.author.voice.channel.id)
-            except:
-                await message.channel.send("You are not in a voice channel")
-            try:
-                voice = self.vc[channel_id]
-            except:
-                await message.channel.send("Robin is not connected to your voice channel")
+            voice = await self.vc_get_obj(message)
             songs = {}
             for member in voice.channel.members:
                 statement = 'SELECT song, liked FROM music WHERE userid=?'
@@ -1456,16 +1416,14 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
         elif "this is so sad" in message.content.lower():
             await self.vc_connect(message)
             try:
-                channel_id = str(message.author.voice.channel.id)
-                self.song_queue = [('https://www.youtube.com/watch?v=Gl6ekgobG2k&ab_channel=ReptileLegitYT',channel_id,message)] + self.song_queue
+                await self.vc_play_song('https://www.youtube.com/watch?v=Gl6ekgobG2k&ab_channel=ReptileLegitYT',message)
             except:
                 pass
 
         elif "goodnight girl" in message.content.lower():
             await self.vc_connect(message)
             try:
-                channel_id = str(message.author.voice.channel.id)
-                self.song_queue = [('https://www.youtube.com/watch?v=ykLDTsfnE5A&ab_channel=J7ck2',channel_id,message)] + self.song_queue
+                await self.vc_play_song('https://www.youtube.com/watch?v=ykLDTsfnE5A&ab_channel=J7ck2',message)
             except:
                 pass
 
@@ -2141,27 +2099,27 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
     @loop(seconds = 1)
     async def jukebox(self):
         if len(self.song_queue) != 0:
-            print("test 1")
+            #print("test 1")
             if self.next_song == None:
                 self.next_song = self.song_queue.pop(0)  #self.next_song: (url, channel_id, message)
-                print("test 2")
+                #print("test 2")
         if self.next_song != None:
-            print("test 3")
+            #print("test 3")
             if self.next_song[1] in self.vc.keys():
-                print("test 4")
+                #print("test 4")
                 voice_client = self.vc[self.next_song[1]]
                 if voice_client.is_connected() and not (voice_client.is_playing() or voice_client.is_paused() and not self.looping):
-                    print("test 5")
+                    #print("test 5")
                     await self.vc_play_song(self.next_song[0], self.next_song[2])
                     self.next_song = None
             else:
                 if len(self.next_song[2].author.voice.channel.members) < 1:        #Tests if Robin is alone
-                    print("test 6")
+                    #print("test 6")
                     await self.vc_disconnect(self.next_song[2])
                     self.song_queue = []
                 else:
                     await self.vc_connect(self.next_song[2])
-                    print("test 7")
+                    #print("test 7")
 
 
     @loop(seconds = 5)
@@ -2186,7 +2144,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
         if not self.queue.empty():
             to_use = self.queue.get()
             await self.post(to_use[0], to_use[1])
-            print("You said " + to_use[0] + " to " + to_use[1])
+            #print("You said " + to_use[0] + " to " + to_use[1])
         if (not self.voice_queue.empty()) and self.voice_block == False:
             to_say = self.voice_queue.get()
             await self.vc_say(to_say)
