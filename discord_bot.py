@@ -2320,10 +2320,11 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                     self.db.commit()
 #```````````````````````````````````````````````````````````````````````````````
 
-
+def start(host):
+    app.run(host=host)
 
 if __name__ == '__main__':
-    api_start = Thread(target=app.run, args=(host='0.0.0.0',))
+    api_start = Thread(target=start, args=('0.0.0.0',))
     api_start.start()
     client = MyClient(MyQueue, intents=intents)
     client.run(TOKEN)
