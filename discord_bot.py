@@ -20,6 +20,10 @@ import yt_dlp
 from dotenv import load_dotenv
 from sys import platform
 from pytube import YouTube
+import json
+from flask import Flask, request, jsonify
+from flask_restful import Api, Resource, reqparse
+from threading import Thread
 
 load_dotenv()
 TOKEN = environ.get('TOKEN')
@@ -44,6 +48,26 @@ CONNECT_UI_MESSAGE = "#UICONNECTED#"
 #casino (outcome string UNIQUE, bets string)
 #music (userid text, song text, liked integer (0 or 1))
 #nfts (id integer UNIQUE, url text, userid text, price integer)
+
+#REST SECTION
+app = Flask(__name__)
+api = Api(app)
+
+parser = reqparse.RequestParser()
+parser.add_argument('message')
+
+class ChannelMessage(Resource):
+    def get(self, channel):
+        return {"data": channel} #change to return most recent message in channel
+
+    def post(self, channel):
+        args = parser.parse_args()
+        message = args['message']
+        MyQueue.put((channel, message))
+        return {"data": message}
+
+
+api.add_resource(ChannelMessage, "/robin/message/<string:channel>")
 
 
 # Suppress noise about console usage from errors
@@ -2141,7 +2165,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                         await self.post(to_post[0], to_post[1])
                     except:
                         pass
-        if not self.queue.empty():
+        if not self.queue.empty():  # Structure the queue and check which type of input is used and then do the approp action
             to_use = self.queue.get()
             await self.post(to_use[0], to_use[1])
             #print("You said " + to_use[0] + " to " + to_use[1])
@@ -2299,5 +2323,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
 
 
 if __name__ == '__main__':
+    api_start = Thread(target=app.run)
+    api_start.start()
     client = MyClient(MyQueue, intents=intents)
     client.run(TOKEN)
