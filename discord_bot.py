@@ -24,6 +24,7 @@ import json
 from flask import Flask, request, jsonify
 from flask_restful import Api, Resource, reqparse
 from threading import Thread
+import time
 
 load_dotenv()
 TOKEN = environ.get('TOKEN')
@@ -68,7 +69,7 @@ class ChannelMessage(Resource):
                 temp = {message[0]: [message[1], message[2]]}
                 dictionary["messages"].append(temp)
         else:
-            await sleep(0.1)
+            time.sleep(0.1)
         return jsonify(dictionary)  #most recent 10 messages
 
     def post(self, channel):
