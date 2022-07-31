@@ -62,14 +62,16 @@ parser.add_argument('message')
 class ChannelMessage(Resource):
     def get(self, channel):
         InQueue.put((REQUEST_MESSAGE, channel))
-        if not OutQueue.empty():
-            messages = OutQueue.get()
-            dictionary = {"messages": []}
-            for message in messages:
-                temp = {message[0]: [message[1], message[2]]}
-                dictionary["messages"].append(temp)
-        else:
-            time.sleep(0.1)
+        while True:
+            if not OutQueue.empty():
+                messages = OutQueue.get()
+                dictionary = {"messages": []}
+                for message in messages:
+                    temp = {message[0]: [message[1], message[2]]}
+                    dictionary["messages"].append(temp)
+                break
+            else:
+                time.sleep(0.1)
         return jsonify(dictionary)  #most recent 10 messages
 
     def post(self, channel):
