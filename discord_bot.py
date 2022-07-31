@@ -2185,7 +2185,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
             if to_use[0] == REQUEST_MESSAGE:
                 channels = self.text_channels
                 channel = self.get_channel(channels[to_use[1]])
-                messages = [(message.id, message.author, message.content) async for message in channel.history(limit=10)]
+                messages = [(message.id, message.author.nick, message.content) async for message in channel.history(limit=10)]
                 self.outqueue.put(messages)
             else:
                 await self.post(to_use[0], to_use[1])
