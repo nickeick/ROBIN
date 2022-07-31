@@ -31,13 +31,15 @@ AUDIO_PATH = environ.get('AUDIO_PATH')
 DATABASE_PATH = environ.get('DATABASE_PATH')
 FFMPEG_PATH = environ.get('FFMPEG_PATH')
 
-MyQueue = Queue()
+InQueue = Queue()
+OutQueue = Queue()
 
 intents = Intents.default()
 intents.members = True
 
 DISCONNECT_MESSAGE = "#DISCONNECT#"
 CONNECT_UI_MESSAGE = "#UICONNECTED#"
+REQUEST_MESSAGE = "#REQUEST#"
 #tables:
 #commands (command_name, output, author)
 #play_requests (game text UNIQUE, time text, yes text, no text, requestor text)
@@ -58,12 +60,21 @@ parser.add_argument('message')
 
 class ChannelMessage(Resource):
     def get(self, channel):
-        return {"data": channel} #change to return most recent message in channel
+        InQueue.put((REQUEST_MESSAGE, "channel"))
+        if not OutQueue.empty():
+            messages = OutQueue.get()
+            dictionary = {"messages": []}
+            for message in messages:
+                temp = {message[0]: [message[1], message[2]]}
+                dictionary["messages"].append(temp)
+        else:
+            sleep(0.1)
+        return jsonify(dictionary)  #most recent 10 messages
 
     def post(self, channel):
         args = parser.parse_args()
         message = args['message']
-        MyQueue.put((channel, message))
+        InQueue.put((channel, message))
         return {"data": message}
 
 
@@ -142,10 +153,11 @@ class YTDLSource(PCMVolumeTransformer):
 
 
 class MyClient(Client):
-    def __init__(self, queue, *args, **kwargs):
+    def __init__(self, inqueue, outqueue, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.client = Client
-        self.queue = queue
+        self.inqueue = inqueue
+        self.outqueue = outqueue
         self.voice_queue = Queue()
         self.song_queue = []
         self.next_song = None
@@ -2165,9 +2177,15 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                         await self.post(to_post[0], to_post[1])
                     except:
                         pass
-        if not self.queue.empty():  # Structure the queue and check which type of input is used and then do the approp action
-            to_use = self.queue.get()
-            await self.post(to_use[0], to_use[1])
+        if not self.inqueue.empty():  # Structure the queue and check which type of input is used and then do the approp action
+            to_use = self.inqueue.get()
+            if to_use[0] == REQUEST_MESSAGE:
+                channels = self.text_channels
+                channel = self.get_channel(channels[channel_name])
+                messages = [(message.id, message.author, message.content) async for message in channel.history(limit=10)]
+                self.outqueue.put(messages)
+            else:
+                await self.post(to_use[0], to_use[1])
             #print("You said " + to_use[0] + " to " + to_use[1])
         if (not self.voice_queue.empty()) and self.voice_block == False:
             to_say = self.voice_queue.get()
@@ -2326,5 +2344,5 @@ def start(host):
 if __name__ == '__main__':
     api_start = Thread(target=start, args=('0.0.0.0',))
     api_start.start()
-    client = MyClient(MyQueue, intents=intents)
+    client = MyClient(InQueue, OutQueue intents=intents)
     client.run(TOKEN)
