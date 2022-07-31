@@ -68,7 +68,7 @@ class ChannelMessage(Resource):
                 temp = {message[0]: [message[1], message[2]]}
                 dictionary["messages"].append(temp)
         else:
-            sleep(0.1)
+            await sleep(0.1)
         return jsonify(dictionary)  #most recent 10 messages
 
     def post(self, channel):
