@@ -61,7 +61,7 @@ parser.add_argument('message')
 
 class ChannelMessage(Resource):
     def get(self, channel):
-        InQueue.put((REQUEST_MESSAGE, "channel"))
+        InQueue.put((REQUEST_MESSAGE, channel))
         if not OutQueue.empty():
             messages = OutQueue.get()
             dictionary = {"messages": []}
@@ -2182,7 +2182,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
             to_use = self.inqueue.get()
             if to_use[0] == REQUEST_MESSAGE:
                 channels = self.text_channels
-                channel = self.get_channel(channels[channel_name])
+                channel = self.get_channel(channels[to_use[1]])
                 messages = [(message.id, message.author, message.content) async for message in channel.history(limit=10)]
                 self.outqueue.put(messages)
             else:
