@@ -2344,5 +2344,5 @@ def start(host):
 if __name__ == '__main__':
     api_start = Thread(target=start, args=('0.0.0.0',))
     api_start.start()
-    client = MyClient(InQueue, OutQueue intents=intents)
+    client = MyClient(InQueue, OutQueue, intents=intents)
     client.run(TOKEN)
