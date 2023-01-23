@@ -221,6 +221,7 @@ class MyClient(Client):
     async def on_ready(self):
         await self.change_presence(activity = Game(name='!help'))
         print('Logged on as', self.user)
+        self.debug("Robin has restarted!")
 
         # dojo = self.get_guild(578065102310342677)
         # general = self.get_channel(578065102310342679)
