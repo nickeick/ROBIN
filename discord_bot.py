@@ -1707,7 +1707,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                         raise ValueError(sections[0] + ' does not have date or time')
                     if time_re.group(1)[0] == '0':
                         await reaction.message.channel.send("Invalid date/time: Included 0 at start of hour")
-                        raise ValueError(event_message + ' Invalid format: includes 0 at beginning of hour')
+                        raise ValueError(reaction.message + ' Invalid format: includes 0 at beginning of hour')
                     else:
                         addevent_insert = (sections[0], date_re.group(3), date_re.group(1), date_re.group(2), time_re.group(0), sections[3])
                         self.c.execute('INSERT INTO calendar VALUES (?,?,?,?,?,?)', addevent_insert)
@@ -1871,7 +1871,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                 if reaction.message.guild.get_role(736618281632268369) not in user.roles:
                     await user.add_roles(reaction.message.guild.get_role(736618281632268369))   #Movie Night Gang
                     await reaction.message.channel.send("Added " + user.display_name + " to Movie Night Gang")
-                    await message.channel.send('*This is an NSFW Gang*')
+                    await reaction.message.channel.send('*This is an NSFW Gang*')
             elif str(reaction.emoji) == "🧑‍💼":
                 if reaction.message.guild.get_role(799751796281049149) not in user.roles:
                     await user.add_roles(reaction.message.guild.get_role(799751796281049149))   #Presentation Gang
@@ -1931,23 +1931,23 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
         if str(payload.emoji) == "☑️" and payload.message_id == 759611108541071380:
             await payload.member.remove_roles(payload.member.guild.get_role(self.initiate_role_id))
         #for react-roles
-        if str(payload.emoji) == "➕" and payload.channel_id == 1027646452371046430 and payload.member != self.user:
+        if payload.emoji.id == 1067155138235596810 and payload.channel_id == 1027646452371046430 and payload.member != self.user:
             partial = payload.message_id.get_partial_message()
             message = await partial.fetch()
             role_name = message.content.strip().lower()
             for role in message.guild.roles:
                 if role.name.lower() == role_name:
                     await payload.member.add_roles(role)
-                    await message.remove_reaction("➕", payload.member)
+                    await message.remove_reaction(self.get_emoji(1067155138235596810), payload.member)
 
-        if str(payload.emoji) == "➖" and payload.channel_id == 1027646452371046430 and payload.member != self.user:
+        if payload.emoji.id == 1067157267922821220 and payload.channel_id == 1027646452371046430 and payload.member != self.user:
             partial = payload.message_id.get_partial_message()
             message = await partial.fetch()
             role_name = message.content.strip().lower()
             for role in message.guild.roles:
                 if role.name.lower() == role_name:
                     await payload.member.remove_roles(role)
-                    await message.remove_reaction("➖", payload.member)
+                    await message.remove_reaction(self.get_emoji(1067157267922821220), payload.member)
 
 
     async def on_reaction_remove(self, reaction, user):
