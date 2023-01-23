@@ -41,6 +41,8 @@ intents.members = True
 DISCONNECT_MESSAGE = "#DISCONNECT#"
 CONNECT_UI_MESSAGE = "#UICONNECTED#"
 REQUEST_MESSAGE = "#REQUEST#"
+VOICE_REQUEST_MESSAGE = "#VOICEREQUEST#"
+VOICE_SEND_MESSAGE = "#VOICESEND#"
 #tables:
 #commands (command_name, output, author)
 #play_requests (game text UNIQUE, time text, yes text, no text, requestor text)
@@ -81,6 +83,30 @@ class ChannelMessage(Resource):
         return {"data": message}
 
 
+class ChannelSing(Resource):
+    def get(self):
+        InQueue.put((VOICE_REQUEST_MESSAGE))
+        while True:
+            if not OutQueue.empty():
+                messages = OutQueue.get()
+                dictionary = {"messages": []}
+                position = 0
+                for message in messages:
+                    position += 1
+                    temp = {str(position): [message[0], message[1]]}
+                    dictionary["messages"].append(temp)
+                break
+            else:
+                time.sleep(0.1)
+        return jsonify(dictionary)
+
+    def post(self):
+        args = parser.parse_args()
+        message = args['message']
+        InQueue.put((VOICE_SEND, message))
+        return {"data": message}
+
+api.add_resource(ChannelSing, "/robin/sing")
 api.add_resource(ChannelMessage, "/robin/message/<string:channel>")
 
 
@@ -200,12 +226,19 @@ class MyClient(Client):
         # general = self.get_channel(578065102310342679)
         self.channels = self.get_all_channels()
         self.text_channels = {}
+        self.voice_channels = {}
         for channel in self.channels:
             if str(channel.type) == 'text':
                 for member in channel.members:
-                    if member.id == 662839781092491284:
+                    if member.id == 662839781092491284: #662839781092491284
                         if channel.permissions_for(member).send_messages:
                             self.text_channels[channel.name] = channel.id
+            elif str(channel.type) == 'voice':
+                for member in channel.members:
+                    if member.id == 662839781092491284: #662839781092491284
+                        if channel.permissions_for(member).send_messages:
+                            fixed_name = channel.name.replace(" ", '').strip().lower()
+                            self.voice_channels[fixed_name] = channel.id
         self.c = self.db.cursor()
         try:
             self.conn, self.addr = start()
@@ -1801,7 +1834,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                         to_send += '|   ' + str(item[1]) + '\n'
                 await reaction.message.edit(content=to_send)
                 await reaction.remove(user)
-
+        #for !sing
         if reaction.message.author == self.user and len(reaction.message.embeds) != 0 and user != self.user:
             if "Robin is now singing:" in reaction.message.embeds[0].title:
                 if str(reaction.emoji) == "👍":
@@ -1828,6 +1861,8 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                         values = (user.id, song_name, 0)
                         self.c.execute("INSERT INTO music VALUES (?, ?, ?)", values)
                     self.db.commit()
+
+
 #````````````````````MARKED FOR CLEANUP`````````````````````````
 
         if reaction.message.author == self.user and "React to Join a Role:" in reaction.message.content and user != self.user:
@@ -1895,6 +1930,25 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
     async def on_raw_reaction_add(self, payload):
         if str(payload.emoji) == "☑️" and payload.message_id == 759611108541071380:
             await payload.member.remove_roles(payload.member.guild.get_role(self.initiate_role_id))
+        #for react-roles
+        if str(payload.emoji) == "➕" and payload.channel_id == 1027646452371046430 and payload.member != self.user:
+            partial = payload.message_id.get_partial_message()
+            message = await partial.fetch()
+            role_name = message.content.strip().lower()
+            for role in message.guild.roles:
+                if role.name.lower() == role_name:
+                    await payload.member.add_roles(role)
+                    await message.remove_reaction("➕", payload.member)
+
+        if str(payload.emoji) == "➖" and payload.channel_id == 1027646452371046430 and payload.member != self.user:
+            partial = payload.message_id.get_partial_message()
+            message = await partial.fetch()
+            role_name = message.content.strip().lower()
+            for role in message.guild.roles:
+                if role.name.lower() == role_name:
+                    await payload.member.remove_roles(role)
+                    await message.remove_reaction("➖", payload.member)
+
 
     async def on_reaction_remove(self, reaction, user):
         if reaction.message.author == self.user and self.play_text in reaction.message.content and user != self.user:
@@ -2180,13 +2234,36 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                         await self.post(to_post[0], to_post[1])
                     except:
                         pass
+        #API
         if not self.inqueue.empty():  # Structure the queue and check which type of input is used and then do the approp action
             to_use = self.inqueue.get()
             if to_use[0] == REQUEST_MESSAGE:
                 channels = self.text_channels
                 channel = self.get_channel(channels[to_use[1]])
-                messages = [(message.id, message.author.nick, message.content) async for message in channel.history(limit=10)]
+                messages = [(message.id, message.author.display_name, message.content) async for message in channel.history(limit=10)]
                 self.outqueue.put(messages)
+            elif to_use[0] == VOICE_REQUEST_MESSAGE:
+                out_list = []
+                if self.next_song != None:
+                    out_list.append((self.next_song[0], self.get_channel(int(self.next_song[1])).name))   # url, channel name
+                    for song in self.song_queue:
+                        out_list.append((song[0], self.get_channel(int(song[1])).name))
+                else:
+                    out_list.append((None, None))
+                self.outqueue.put(out_list)
+            elif to_use[0] == VOICE_SEND_MESSAGE:
+                message = await self.get_channel(582064740973543435).send("Queueing " + to_use[1] + "...")
+                try:
+                    assert message.author.voice != None, "Robin must be connected to a voice channel"
+                    title_url = await self.vc_play_song(url, message)
+                    if title_url != None:
+                        channel_id = str(message.author.voice.channel.id)
+                        self.song_queue = [(url,channel_id,message)] + self.song_queue
+                        await message.channel.send("Your song has been queued")
+                except AssertionError as err:
+                    await message.channel.send(err)
+                except Exception as err:
+                    print(err)
             else:
                 await self.post(to_use[0], to_use[1])
             #print("You said " + to_use[0] + " to " + to_use[1])
