@@ -1931,12 +1931,15 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
         if str(payload.emoji) == "☑️" and payload.message_id == 759611108541071380:
             await payload.member.remove_roles(payload.member.guild.get_role(self.initiate_role_id))
         #for react-roles
+        self.debug("test 1")
         if payload.emoji.id == 1067155138235596810 and payload.channel_id == 1027646452371046430 and payload.member != self.user:
+            self.debug("test 2")
             partial = payload.message_id.get_partial_message()
             message = await partial.fetch()
             role_name = message.content.strip().lower()
             for role in message.guild.roles:
                 if role.name.lower() == role_name:
+                    self.debug("test 3")
                     await payload.member.add_roles(role)
                     await message.remove_reaction(self.get_emoji(1067155138235596810), payload.member)
 
@@ -2184,6 +2187,10 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                 if option != options[-1]:
                     to_send += ','
             await message.channel.send(to_send)
+
+    async def debug(self, message):
+        user = self.get_user(344304643767271425)
+        await user.send(message)
 
 
 
