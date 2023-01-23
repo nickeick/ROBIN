@@ -1530,7 +1530,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
 
 
         elif message.content.startswith('!test'):
-            await message.channel.send("Test Successful")
+            await message.channel.send("Test Successful!")
 
 
         elif message.content.startswith('!alive'):
