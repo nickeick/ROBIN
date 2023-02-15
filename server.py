@@ -175,14 +175,14 @@ def handle_client(conn, addr, ping_queue):
                 if name:
                     CONNECTIONS.remove_conn(name)
                     print("[DISCONNECT] " + name + " disconnected")
-                    #key = list(CONNECTIONS.keys())[0]
-                    #connection = CONNECTIONS.pop(key)
-                    # if connection == conn:
-                    #     print("[DISCONNECT] " + key + " disconnected")
-                    #     break
-                    # else:
-                    #     CONNECTIONS[key] = connection
                 break
+
+            #elif msg.startswith("Disconnect:"):
+                #client_name = msg.replace("Disconnect:", '')
+                #if client_name:
+                    #connection = CONNECTIONS.remove_conn(client_name)
+                    #send(connection, DISCONNECT_MESSAGE)
+
 
             elif msg == RESTART_MESSAGE:
                 while CONNECTIONS.get_names() != []:
@@ -242,20 +242,20 @@ def ping_all(queue):
         next_node = CONNECTIONS.first()
         while next_node != None:
         #for key in conn_keys:
-            try:
-                start = time()
-                #send(CONNECTIONS[key], PING_MESSAGE)
-                send(next_node.get_conn(), PING_MESSAGE)
-                while queue.empty():               #wait to receive ping from client
-                    sleep(0.1)
-                end = time()
-                while not queue.empty():           #empty the queue
-                    queue.get()
-                if 'UI' in CONNECTIONS.get_names():
-                    send(CONNECTIONS.find_conn_by_name('UI'), "#PINGED# " + str(next_node.get_name()))
-                print("[PINGED] by " + next_node.get_name() + " in " + str(end-start) + " seconds")
-            except:
-                CONNECTIONS.remove_conn(next_node.get_name())
+        #try:
+            start = time()
+            #send(CONNECTIONS[key], PING_MESSAGE)
+            send(next_node.get_conn(), PING_MESSAGE)
+            while queue.empty():               #wait to receive ping from client
+                sleep(0.1)
+            end = time()
+            while not queue.empty():           #empty the queue
+                queue.get()
+            if 'UI' in CONNECTIONS.get_names():
+                send(CONNECTIONS.find_conn_by_name('UI'), "#PINGED# " + str(next_node.get_name()))
+            print("[PINGED] by " + next_node.get_name() + " in " + str(end-start) + " seconds")
+        #except:
+            #CONNECTIONS.remove_conn(next_node.get_name())
             next_node = next_node.next
 
 

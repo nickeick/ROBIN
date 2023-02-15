@@ -221,7 +221,6 @@ class MyClient(Client):
     async def on_ready(self):
         await self.change_presence(activity = Game(name='!help'))
         print('Logged on as', self.user)
-        self.debug("Robin has restarted!")
 
         # dojo = self.get_guild(578065102310342677)
         # general = self.get_channel(578065102310342679)
@@ -259,6 +258,8 @@ class MyClient(Client):
             self.braincell_swap.restart()
             self.posture_check.restart()
             self.check_datetime.restart()
+        self.debug("Robin has restarted!")
+
 
     async def on_message(self, message):
         # don't respond to ourselves
@@ -2162,9 +2163,9 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
             receive_select = (receiver_member,)
             self.c.execute('SELECT points FROM braincell_points WHERE name=?', receive_select)
             receive_points = self.c.fetchone()
-            assert author_points != None, "You have no Common Cents"
-            assert author_points[0] >= value, "You do not have enough Common Cents to give"
-            author_replace = (giver_member, author_points[0]-value)
+            assert giver_points != None, "You have no Common Cents"
+            assert giver_points[0] >= value, "You do not have enough Common Cents to give"
+            author_replace = (giver_member, giver_points[0]-value)
             self.c.execute("REPLACE INTO braincell_points (name, points) VALUES (?, ?)", author_replace)
             if receive_points == None:
                 receive_replace = (receiver_member, value)

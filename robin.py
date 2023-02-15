@@ -33,67 +33,20 @@ class ROBIN:
         ]
         self.discord_message = ['','']
         # functions below -----------
-        self.function_tree = Tree("Robin", '''
-self.speak("Hello Nick")
-self.listen("Tell Robin something: ", "goodbye")
-                ''')
-        time_tree = Tree("time",'''
-        self.get_time()
-        self.speak(self.time)
-                        ''')
-        self.function_tree.add_child(time_tree)
-        discord_tree = Tree("Discord", '''
-self.discord()
-        ''')
-        self.keys = ["Robin",
-                    "time",
-                    "Discord"]
-        self.funcs = ['''
-self.speak("Hello Nick")
-self.listen("Tell Robin something: ", "goodbye")
-                ''',
-                '''
-self.get_time()
-self.speak(self.time)
-                ''',
-                '''
-self.discord()
-                ''']
 
-    def listen(self, prompt = "Say something: ", waitfor = "exit", defaults = True, functions = None):
+    def listen(self, prompt = "Say something: ", waitfor = "exit"):
         text = ""
-        if defaults:
-            keys = self.keys
-            funcs = self.funcs
-        else:
-            keys = []
-            funcs = []
-        try:
-            for key in functions:
-                keys.append(key)
-                funcs.append(functions[key])
-        except:
-            pass
         while text != waitfor:      #loop
             text = self.hear(prompt)
             #if not gui_queue.empty():      TO BE REMOVED
                 #text = gui_queue.get()      #queue
             if text != "Couldn't understand you":
-                try:
-                    print('You said: ' + text)
-                    i = 0
-                    for key in keys:
-                        if key in text + " ":
-                            exec(funcs[i])
-                            return
-                        i+=1
-                except TypeError:
-                    pass
+                print('You said: ' + text)
 
     def hear(self, prompt = "Say something: "):
         r = Recognizer()
-        with Microphone() as source:
-            r.adjust_for_ambient_noise(source, duration = 1)
+        with Microphone(device_index=3) as source:
+            r.adjust_for_ambient_noise(source, duration = 5)
             print(prompt)
             try:
                 audio = r.listen(source, timeout = 2)
