@@ -38,7 +38,7 @@ OutQueue = Queue()
 
 intents = Intents.default()
 intents.members = True
-intents.message_content = True
+#intents.message_content = True ## For newer versions of discord.py and python
 
 DISCONNECT_MESSAGE = "#DISCONNECT#"
 CONNECT_UI_MESSAGE = "#UICONNECTED#"
