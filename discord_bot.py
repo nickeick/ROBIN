@@ -31,12 +31,14 @@ TOKEN = environ.get('TOKEN')
 AUDIO_PATH = environ.get('AUDIO_PATH')
 DATABASE_PATH = environ.get('DATABASE_PATH')
 FFMPEG_PATH = environ.get('FFMPEG_PATH')
+IP_ADDRESS = environ.get('IP_ADDRESS')
 
 InQueue = Queue()
 OutQueue = Queue()
 
 intents = Intents.default()
 intents.members = True
+intents.message_content = True
 
 DISCONNECT_MESSAGE = "#DISCONNECT#"
 CONNECT_UI_MESSAGE = "#UICONNECTED#"
@@ -55,59 +57,59 @@ VOICE_SEND_MESSAGE = "#VOICESEND#"
 #nfts (id integer UNIQUE, url text, userid text, price integer)
 
 #REST SECTION
-app = Flask(__name__)
-api = Api(app)
+# app = Flask(__name__)
+# api = Api(app)
 
-parser = reqparse.RequestParser()
-parser.add_argument('message')
+# parser = reqparse.RequestParser()
+# parser.add_argument('message')
 
-class ChannelMessage(Resource):
-    def get(self, channel):
-        InQueue.put((REQUEST_MESSAGE, channel))
-        while True:
-            if not OutQueue.empty():
-                messages = OutQueue.get()
-                dictionary = {"messages": []}
-                for message in messages:
-                    temp = {message[0]: [message[1], message[2]]}
-                    dictionary["messages"].append(temp)
-                break
-            else:
-                time.sleep(0.1)
-        return jsonify(dictionary)  #most recent 10 messages
+# class ChannelMessage(Resource):
+#     def get(self, channel):
+#         InQueue.put((REQUEST_MESSAGE, channel))
+#         while True:
+#             if not OutQueue.empty():
+#                 messages = OutQueue.get()
+#                 dictionary = {"messages": []}
+#                 for message in messages:
+#                     temp = {message[0]: [message[1], message[2]]}
+#                     dictionary["messages"].append(temp)
+#                 break
+#             else:
+#                 time.sleep(0.1)
+#         return jsonify(dictionary)  #most recent 10 messages
 
-    def post(self, channel):
-        args = parser.parse_args()
-        message = args['message']
-        InQueue.put((channel, message))
-        return {"data": message}
+#     def post(self, channel):
+#         args = parser.parse_args()
+#         message = args['message']
+#         InQueue.put((channel, message))
+#         return {"data": message}
 
 
-class ChannelSing(Resource):
-    def get(self):
-        InQueue.put((VOICE_REQUEST_MESSAGE))
-        while True:
-            if not OutQueue.empty():
-                messages = OutQueue.get()
-                dictionary = {"messages": []}
-                position = 0
-                for message in messages:
-                    position += 1
-                    temp = {str(position): [message[0], message[1]]}
-                    dictionary["messages"].append(temp)
-                break
-            else:
-                time.sleep(0.1)
-        return jsonify(dictionary)
+# class ChannelSing(Resource):
+#     def get(self):
+#         InQueue.put((VOICE_REQUEST_MESSAGE))
+#         while True:
+#             if not OutQueue.empty():
+#                 messages = OutQueue.get()
+#                 dictionary = {"messages": []}
+#                 position = 0
+#                 for message in messages:
+#                     position += 1
+#                     temp = {str(position): [message[0], message[1]]}
+#                     dictionary["messages"].append(temp)
+#                 break
+#             else:
+#                 time.sleep(0.1)
+#         return jsonify(dictionary)
 
-    def post(self):
-        args = parser.parse_args()
-        message = args['message']
-        InQueue.put((VOICE_SEND, message))
-        return {"data": message}
+#     def post(self):
+#         args = parser.parse_args()
+#         message = args['message']
+#         InQueue.put((VOICE_SEND, message))
+#         return {"data": message}
 
-api.add_resource(ChannelSing, "/robin/sing")
-api.add_resource(ChannelMessage, "/robin/message/<string:channel>")
+# api.add_resource(ChannelSing, "/robin/sing")
+# api.add_resource(ChannelMessage, "/robin/message/<string:channel>")
 
 
 # Suppress noise about console usage from errors
@@ -125,7 +127,7 @@ ytdl_format_options = {
     'quiet': True,
     'no_warnings': True,
     'default_search': 'auto',
-    'source_address': '10.0.0.28' # bind to ipv4 since ipv6 addresses cause issues sometimes
+    'source_address': IP_ADDRESS # bind to ipv4 since ipv6 addresses cause issues sometimes
 }
 
 ffmpeg_options = {
@@ -172,9 +174,12 @@ class YTDLSource(PCMVolumeTransformer):
         loop = loop or get_event_loop()
         data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
 
+        print(data)
+
         if 'entries' in data:
-            # take first item from a playlist
-            data = data['entries'][0]
+            if data['entries'] != []:
+                # take first item from a playlist
+                data = data['entries'][0]
 
         filename = data['url'] if stream else ytdl.prepare_filename(data)
         return cls(FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
@@ -258,7 +263,7 @@ class MyClient(Client):
             self.braincell_swap.restart()
             self.posture_check.restart()
             self.check_datetime.restart()
-        self.debug("Robin has restarted!")
+        await self.debug("Robin has restarted!")
 
 
     async def on_message(self, message):
@@ -1141,7 +1146,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
             await self.vc_connect(message)
 
         elif message.content.startswith("!incall"):
-            await self.vc[str(message.author.voice.channel.id)].is_connected()
+            await message.channel.send(str(self.vc[str(message.author.voice.channel.id)].is_connected()))
 
         elif message.content.startswith("!disconnect"):
             await self.vc_disconnect(message)
@@ -1157,15 +1162,22 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
 
 
         elif message.content.startswith("!sing"):
+            #await self.debug("test1")
             await self.tutorial(message, [('song', 'text or URL')])
             url = message.content.replace("!sing", '').strip()
+            #await self.debug("test2")
             try:
                 assert message.author.voice != None, "You must be connected to a voice channel to use !sing"
                 await self.vc_connect(message)
+                #await self.debug("test2 and a half")
                 title_url = await self.vc_play_song(url, message)
+                #await self.debug("test3")
                 if title_url != None:
+                    #await self.debug("test4")
                     channel_id = str(message.author.voice.channel.id)
-                    self.song_queue = [(url,channel_id,message)] + self.song_queue
+                    new_song = (url,channel_id,message)
+                    self.song_queue.append(new_song)
+                    #await self.debug("test5")
                     await message.channel.send("Your song has been queued")
             except AssertionError as err:
                 await message.channel.send(err)
@@ -1933,15 +1945,15 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
         if str(payload.emoji) == "☑️" and payload.message_id == 759611108541071380:
             await payload.member.remove_roles(payload.member.guild.get_role(self.initiate_role_id))
         #for react-roles
-        self.debug("test 1")
+        await self.debug("test 1")
         if payload.emoji.id == 1067155138235596810 and payload.channel_id == 1027646452371046430 and payload.member != self.user:
-            self.debug("test 2")
+            await self.debug("test 2")
             partial = payload.message_id.get_partial_message()
             message = await partial.fetch()
             role_name = message.content.strip().lower()
             for role in message.guild.roles:
                 if role.name.lower() == role_name:
-                    self.debug("test 3")
+                    await self.debug("test 3")
                     await payload.member.add_roles(role)
                     await message.remove_reaction(self.get_emoji(1067155138235596810), payload.member)
 
@@ -2122,11 +2134,14 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
 
     async def vc_play_song(self, url, message):     #Fix 403s
         #!sing
+        #await self.debug("two and one")
         player = await YTDLSource.from_url(url, loop=None, stream=True)
+        #await self.debug("two and two")
         try:
             self.vc[str(message.author.voice.channel.id)].play(player, after=lambda e: print('Player error: %s' % e) if e else None)
         except Exception as err:
             return (player.title, player.url)
+        #await self.debug("two and three")
         minutes = player.duration // 60
         seconds = player.duration % 60
         embed = Embed(title="Robin is now singing:", description=f"{player.title}", footer=f"({minutes} minutes {seconds} seconds)", url=player.url)
@@ -2201,27 +2216,27 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
     @loop(seconds = 1)
     async def jukebox(self):
         if len(self.song_queue) != 0:
-            #print("test 1")
+            #print("jukebox 1")
             if self.next_song == None:
-                self.next_song = self.song_queue.pop(0)  #self.next_song: (url, channel_id, message)
-                #print("test 2")
+                self.next_song = self.song_queue.pop()  #self.next_song: (url, channel_id, message)
+                #print("jukebox 2")
         if self.next_song != None:
-            #print("test 3")
+            #print("jukebox 3")
             if self.next_song[1] in self.vc.keys():
-                #print("test 4")
+                #print("jukebox 4")
                 voice_client = self.vc[self.next_song[1]]
                 if voice_client.is_connected() and not (voice_client.is_playing() or voice_client.is_paused() and not self.looping):
-                    #print("test 5")
+                    #print("jukebox 5")
                     await self.vc_play_song(self.next_song[0], self.next_song[2])
                     self.next_song = None
             else:
                 if len(self.next_song[2].author.voice.channel.members) < 1:        #Tests if Robin is alone
-                    #print("test 6")
+                    #print("jukebox 6")
                     await self.vc_disconnect(self.next_song[2])
                     self.song_queue = []
                 else:
                     await self.vc_connect(self.next_song[2])
-                    #print("test 7")
+                    #print("jukebox 7")
 
 
     @loop(seconds = 5)
@@ -2427,11 +2442,11 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                     self.db.commit()
 #```````````````````````````````````````````````````````````````````````````````
 
-def start(host):
-    app.run(host=host)
+#def start(host):
+    #app.run(host=host)
 
 if __name__ == '__main__':
-    api_start = Thread(target=start, args=('0.0.0.0',))
-    api_start.start()
+    #api_start = Thread(target=start, args=('0.0.0.0',))
+    #api_start.start()
     client = MyClient(InQueue, OutQueue, intents=intents)
     client.run(TOKEN)
