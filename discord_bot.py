@@ -1165,7 +1165,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                 title_url = await self.vc_play_song(url, message)
                 if title_url != None:
                     channel_id = str(message.author.voice.channel.id)
-                    self.song_queue = self.song_queue + [(url,channel_id,message)]
+                    self.song_queue.append((url,channel_id,message))
                     await message.channel.send("Your song has been queued")
             except AssertionError as err:
                 await message.channel.send(err)
@@ -2190,9 +2190,9 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                     to_send += ','
             await message.channel.send(to_send)
 
-    async def debug(self, message):
+    async def debug(self, text):
         user = self.get_user(344304643767271425)
-        await user.send(message)
+        await user.send(text)
 
 
 
