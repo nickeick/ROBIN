@@ -174,7 +174,7 @@ class YTDLSource(PCMVolumeTransformer):
         loop = loop or get_event_loop()
         data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
 
-        print(data)
+        #print(data)
 
         if 'entries' in data:
             if data['entries'] != []:
@@ -1945,13 +1945,14 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
         if str(payload.emoji) == "☑️" and payload.message_id == 759611108541071380:
             await payload.member.remove_roles(payload.member.guild.get_role(self.initiate_role_id))
         #for react-roles
-        await self.debug("test 1")
+        #await self.debug("test 1")
         if payload.emoji.id == 1067155138235596810 and payload.channel_id == 1027646452371046430 and payload.member != self.user:
             await self.debug("test 2")
             partial = payload.message_id.get_partial_message()
             message = await partial.fetch()
             role_name = message.content.strip().lower()
             for role in message.guild.roles:
+                print(role)
                 if role.name.lower() == role_name:
                     await self.debug("test 3")
                     await payload.member.add_roles(role)
