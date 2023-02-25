@@ -1948,7 +1948,8 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
         #await self.debug("test 1")
         if payload.emoji.id == 1067155138235596810 and payload.channel_id == 1027646452371046430 and payload.member != self.user:
             await self.debug("test 2")
-            partial = payload.message_id.get_partial_message()
+            channel = self.get_channel(payload.channel_id)
+            partial = channel.get_partial_message(payload.message_id)
             message = await partial.fetch()
             role_name = message.content.strip().lower()
             self.debug(role_name)
