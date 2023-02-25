@@ -1951,8 +1951,9 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
             partial = payload.message_id.get_partial_message()
             message = await partial.fetch()
             role_name = message.content.strip().lower()
+            self.debug(role_name)
             for role in message.guild.roles:
-                print(role)
+                #print(role)
                 if role.name.lower() == role_name:
                     await self.debug("test 3")
                     await payload.member.add_roles(role)
