@@ -622,14 +622,16 @@ Join the Stardew Gang: <:chicken:804147857719951431>''')
             for role in message.author.roles:
                 if role.name == "Server Admin":
                     await self.tutorial(message, [('gang name', 'text')])
-                    gang = message.content.replace('!makegang', '').strip().replace('gang', '')
+                    gang = message.content.replace('!makegang', '').replace('gang', '').strip()
                     new_role = await message.guild.create_role(name=gang + " Gang")
                     overwrites = {message.guild.default_role: PermissionOverwrite(read_messages=False),
                                     new_role: PermissionOverwrite(read_messages=True)}
                     await message.guild.create_text_channel(name=gang + "-gang", overwrites=overwrites, category=message.guild.get_channel(579796688420732949))
                     await message.channel.send(gang + ' Gang has been made! Type "!join ' + gang + ' Gang" to join')
                     channel = self.get_channel(1027646452371046430)
-                    await channel.send(gang + " Gang")
+                    sent = await channel.send(gang + " Gang")
+                    await sent.add_reaction(self.get_emoji(1067155138235596810))
+                    await sent.add_reaction(self.get_emoji(1067157267922821220))
                     
 
 
