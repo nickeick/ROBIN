@@ -274,12 +274,12 @@ class MyClient(Client):
 
         elif message.content.startswith('!execute'):
             if str(message.author) == 'nickeick#9008':
-                channel = self.get_channel(1027646452371046430)
-                for role in channel.guild.roles:
-                    if 'gang' in str(role).lower():
-                        sent = await channel.send(str(role))
-                        await sent.add_reaction(self.get_emoji(1067155138235596810))
-                        await sent.add_reaction(self.get_emoji(1067157267922821220))
+                # channel = self.get_channel(1027646452371046430)
+                # for role in channel.guild.roles:
+                #     if 'gang' in str(role).lower():
+                #         sent = await channel.send(str(role))
+                #         await sent.add_reaction(self.get_emoji(1067155138235596810))
+                #         await sent.add_reaction(self.get_emoji(1067157267922821220))
                 #self.c.execute("DELETE FROM music WHERE song LIKE ? AND song LIKE ?",('%minutes%', '%seconds%'))
                 #self.db.commit()
                 #com_message = message.content.replace('!execute', '').strip()
@@ -1956,18 +1956,19 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
         #for react-roles
         #await self.debug("test 1")
         if payload.emoji.id == 1067155138235596810 and payload.channel_id == 1027646452371046430 and payload.member != self.user:
-            await self.debug("test 2")
+            #await self.debug("test 2")
             channel = self.get_channel(payload.channel_id)
             partial = channel.get_partial_message(payload.message_id)
             message = await partial.fetch()
             role_name = message.content.strip().lower()
-            self.debug(role_name)
+            #self.debug(role_name)
             for role in message.guild.roles:
                 #print(role)
                 if role.name.lower() == role_name:
-                    await self.debug("test 3")
+                    #await self.debug("test 3")
                     await payload.member.add_roles(role)
                     await message.remove_reaction(self.get_emoji(1067155138235596810), payload.member)
+                    await payload.member.send("You have been added to " + message.content)
 
         if payload.emoji.id == 1067157267922821220 and payload.channel_id == 1027646452371046430 and payload.member != self.user:
             channel = self.get_channel(payload.channel_id)
@@ -1978,6 +1979,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                 if role.name.lower() == role_name:
                     await payload.member.remove_roles(role)
                     await message.remove_reaction(self.get_emoji(1067157267922821220), payload.member)
+                    await payload.member.send("You have been removed from " + message.content)
 
 
     async def on_reaction_remove(self, reaction, user):
