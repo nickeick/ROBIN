@@ -274,7 +274,13 @@ class MyClient(Client):
 
         elif message.content.startswith('!execute'):
             if str(message.author) == 'nickeick#9008':
-                self.c.execute("DELETE FROM music WHERE song LIKE ? AND song LIKE ?",('%minutes%', '%seconds%'))
+                channel = self.get_channel(1027646452371046430)
+                for role in channel.guild.roles:
+                    if 'gang' in str(role).lower():
+                        sent = await channel.send(str(role))
+                        await sent.add_reaction(self.get_emoji(1067155138235596810))
+                        await sent.add_reaction(self.get_emoji(1067157267922821220))
+                #self.c.execute("DELETE FROM music WHERE song LIKE ? AND song LIKE ?",('%minutes%', '%seconds%'))
                 #self.db.commit()
                 #com_message = message.content.replace('!execute', '').strip()
                 #self.c.execute("SELECT * from commands WHERE output = ?" (com_message,))
@@ -622,6 +628,9 @@ Join the Stardew Gang: <:chicken:804147857719951431>''')
                                     new_role: PermissionOverwrite(read_messages=True)}
                     await message.guild.create_text_channel(name=gang + "-gang", overwrites=overwrites, category=message.guild.get_channel(579796688420732949))
                     await message.channel.send(gang + ' Gang has been made! Type "!join ' + gang + ' Gang" to join')
+                    channel = self.get_channel(1027646452371046430)
+                    await channel.send(gang + " Gang")
+                    
 
 
         elif message.content.startswith('!gangs'):
@@ -1961,7 +1970,8 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                     await message.remove_reaction(self.get_emoji(1067155138235596810), payload.member)
 
         if payload.emoji.id == 1067157267922821220 and payload.channel_id == 1027646452371046430 and payload.member != self.user:
-            partial = payload.message_id.get_partial_message()
+            channel = self.get_channel(payload.channel_id)
+            partial = channel.get_partial_message(payload.message_id)
             message = await partial.fetch()
             role_name = message.content.strip().lower()
             for role in message.guild.roles:
