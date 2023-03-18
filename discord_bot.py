@@ -25,6 +25,7 @@ from flask import Flask, request, jsonify
 from flask_restful import Api, Resource, reqparse
 from threading import Thread
 import time
+from shutil import copy2
 
 load_dotenv()
 TOKEN = environ.get('TOKEN')
@@ -257,12 +258,14 @@ class MyClient(Client):
             self.braincell_swap.start()
             self.posture_check.start()
             self.check_datetime.start()
+            self.data_backup.start()
         except:
             self.jukebox.restart()
             self.robin_STT.restart()
             self.braincell_swap.restart()
             self.posture_check.restart()
             self.check_datetime.restart()
+            self.data_backup.restart()
         await self.debug("Robin has restarted!")
 
 
@@ -2333,6 +2336,11 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                 await member.add_roles(braincell_role)
         self.think_lock = False
 
+    @loop(hours = 1)
+    async def data_backup(self):
+        t = time.localtime()
+        if t.tm_hour == 0:
+            copy2(DATABASE_PATH, '../' + DATABASE_PATH)
 
     @loop(hours = 3)
     async def posture_check(self):
