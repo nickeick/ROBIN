@@ -2103,11 +2103,12 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                 self.vc[str(user.voice.channel.id)] = voice_obj
                 await self.debug("conn8")
                 #await message.channel.send('Robin has connected')
-        except AssertionError as err:
-            print(err)
+        except AssertionError as Aerr:
             if message.id not in self.waiting_channels:
-                await message.channel.send(err)
+                await message.channel.send(Aerr)
                 self.waiting_channels.append(message.id)
+        except Exception as err:
+            self.debug(str(err))
 
 
     async def vc_disconnect(self, message):
