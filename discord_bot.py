@@ -1176,22 +1176,22 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
 
 
         elif message.content.startswith("!sing"):
-            #await self.debug("test1")
+            await self.debug("test1")
             await self.tutorial(message, [('song', 'text or URL')])
             url = message.content.replace("!sing", '').strip()
-            #await self.debug("test2")
+            await self.debug("test2")
             try:
                 assert message.author.voice != None, "You must be connected to a voice channel to use !sing"
                 await self.vc_connect(message)
-                #await self.debug("test2 and a half")
+                await self.debug("test2 and a half")
                 title_url = await self.vc_play_song(url, message)
-                #await self.debug("test3")
+                await self.debug("test3")
                 if title_url != None:
-                    #await self.debug("test4")
+                    await self.debug("test4")
                     channel_id = str(message.author.voice.channel.id)
                     new_song = (url,channel_id,message)
                     self.song_queue.append(new_song)
-                    #await self.debug("test5")
+                    await self.debug("test5")
                     await message.channel.send("Your song has been queued")
             except AssertionError as err:
                 await message.channel.send(err)
