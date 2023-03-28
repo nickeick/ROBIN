@@ -2104,6 +2104,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                 await self.debug("conn8")
                 #await message.channel.send('Robin has connected')
         except AssertionError as err:
+            print(err)
             if message.id not in self.waiting_channels:
                 await message.channel.send(err)
                 self.waiting_channels.append(message.id)
