@@ -2097,7 +2097,6 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                         await self.debug("conn5")
                     if message.id in self.waiting_channels:
                         self.waiting_channels.remove(message.id)
-            self.voice_clients = []
             await self.debug("conn6")
             voice_obj = await voice_channel.connect()
             await self.debug("conn7")
