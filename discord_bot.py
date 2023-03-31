@@ -2090,13 +2090,14 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                 if voice_client.guild == message.guild:
                     await self.debug("conn3")
                     assert not (voice_client.is_playing() or voice_client.is_paused()), "I am currently active in another voice channel. Thank you for your patience"
-                    await voice_client.disconnect()
+                    await voice_client.disconnect(force=True)
                     await self.debug("conn4")
                     if str(message.author.voice.channel.id) in self.vc:
                         del self.vc[str(message.author.voice.channel.id)]
                         await self.debug("conn5")
                     if message.id in self.waiting_channels:
                         self.waiting_channels.remove(message.id)
+            self.voice_clients = []
             await self.debug("conn6")
             voice_obj = await voice_channel.connect()
             await self.debug("conn7")
@@ -2108,7 +2109,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
         #         await message.channel.send(Aerr)
         #         self.waiting_channels.append(message.id)
         # except Exception as err:
-        #     self.debug(str(err))
+        #     await self.debug(str(err))
 
 
     async def vc_disconnect(self, message):
