@@ -2259,10 +2259,10 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
             voice_client = self.next_song[2].guild.voice_client
             #await self.debug(str(voice_client.is_connected()))
             #voice_client = self.vc[self.next_song[1]]
-            if voice_client.is_connected() and not (voice_client.is_playing() or voice_client.is_paused() and not self.looping):
-                await self.debug("jukebox 5")
-                await self.vc_play_song(self.next_song[0], self.next_song[2])
-                self.next_song = None
+            #if voice_client.is_connected() and not (voice_client.is_playing() or voice_client.is_paused() and not self.looping):
+            await self.debug("jukebox 5")
+            await self.vc_play_song(self.next_song[0], self.next_song[2])
+            self.next_song = None
             # else:
             #     if len(self.next_song[2].author.voice.channel.members) < 1:        #Tests if Robin is alone
             #         await self.debug("jukebox 6")
