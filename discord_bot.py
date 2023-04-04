@@ -1182,7 +1182,8 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
             await self.debug("test2")
             try:
                 assert message.author.voice != None, "You must be connected to a voice channel to use !sing"
-                await self.vc_connect(message)
+                if message.guild.voice_client == None:
+                    await self.vc_connect(message)
                 await self.debug("test2 and a half")
                 title_url = await self.vc_play_song(url, message)
                 await self.debug("test3")
