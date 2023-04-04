@@ -2172,6 +2172,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
             message.guild.voice_client.play(player, after=lambda e: print('Player error: %s' % e) if e else None)
             #self.vc[str(message.author.voice.channel.id)].play(player, after=lambda e: print('Player error: %s' % e) if e else None)
         except Exception as err:
+            self.debug(str(err))
             return (player.title, player.url)
         #await self.debug("two and three")
         minutes = player.duration // 60
