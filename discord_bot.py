@@ -1489,9 +1489,9 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
             json_to_send = {'message': reply.content}
             res = requests.post('http://10.0.0.240:5000/summary', json=json_to_send)
             if res.status_code != 200:
-                self.debug(res.status_code)
+                await self.debug(res.status_code)
             else:
-                message.channel.send(res.text)
+                await message.channel.send(res.text)
 
 #--------------------------Misc---------------------------------------
 
