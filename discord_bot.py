@@ -26,6 +26,7 @@ from flask_restful import Api, Resource, reqparse
 from threading import Thread
 import time
 from shutil import copy2
+import requests
 
 load_dotenv()
 TOKEN = environ.get('TOKEN')
@@ -1481,6 +1482,13 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
             except AssertionError as err:
                 await message.channel.send(err)
 
+#--------------------------Summary---------------------------------------
+
+        elif message.content.startswith('!summary'):
+            reply = await message.channel.fetch_message(message.reference.message_id)
+            json_to_send = {'message': reply.content}
+            res = requests.post('http://10.0.0.240:5000/summary', json=json_to_send)
+            message.channel.send(res.text)
 
 #--------------------------Misc---------------------------------------
 
