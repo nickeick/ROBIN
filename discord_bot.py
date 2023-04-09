@@ -1488,7 +1488,10 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
             reply = await message.channel.fetch_message(message.reference.message_id)
             json_to_send = {'message': reply.content}
             res = requests.post('http://10.0.0.240:5000/summary', json=json_to_send)
-            message.channel.send(res.text)
+            if res.status_code != 200:
+                self.debug(res.status_code)
+            else:
+                message.channel.send(res.text)
 
 #--------------------------Misc---------------------------------------
 
