@@ -1491,7 +1491,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
             if res.status_code != 200:
                 await self.debug(res.status_code)
             else:
-                summary = res.json()['summary'][0]['summary_text']
+                summary = res.json()['summary']
                 await message.channel.send(summary)
 
 #--------------------------Misc---------------------------------------
