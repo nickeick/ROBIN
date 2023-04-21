@@ -1496,6 +1496,25 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
 
 #--------------------------Misc---------------------------------------
 
+        elif message.content.startswith('!status'):
+            to_send = """Robin is currently online! Here is her functionality status:
+            Simple messages: ✅
+            Braincells: 🔄
+            Calendar: 🔄
+            NFTs: 🔄
+            Voice: 🔄
+            Summaries: 🔄
+            """
+            msg_sent = await message.channel.send(to_send)
+            #Check for status of database, voice connect, and server
+            response = await self.request(url='summary', text='test')
+            if response.status_code == 200:
+                msg_sent.edit(content=msg_sent.content.replace('Summaries: 🔄', 'Summaries: ✅'))
+            else:
+                msg_sent.edit(content=msg_sent.content.replace('Summaries: 🔄', 'Summaries: ❌'))
+            #msg_sent.edit(content=
+
+
         elif message.content.startswith('!whenjoin'):
             year = str(message.author.joined_at.year)
             month = str(message.author.joined_at.month)
@@ -2254,6 +2273,11 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
         user = self.get_user(344304643767271425)
         await user.send(text)
 
+    async def request(self, url, text):
+        json_to_send = {'message': text}
+        res = requests.post('http://10.0.0.240:5000/' + url, json=json_to_send)
+        return res
+
 
 
 #-----------------------LOOPS-------------------------------
@@ -2272,18 +2296,18 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
             voice_client = self.next_song[2].guild.voice_client
             #await self.debug(str(voice_client.is_connected()))
             #voice_client = self.vc[self.next_song[1]]
-            #if voice_client.is_connected() and not (voice_client.is_playing() or voice_client.is_paused() and not self.looping):
-            await self.debug("jukebox 5")
-            await self.vc_play_song(self.next_song[0], self.next_song[2])
-            self.next_song = None
-            # else:
-            #     if len(self.next_song[2].author.voice.channel.members) < 1:        #Tests if Robin is alone
-            #         await self.debug("jukebox 6")
-            #         await self.vc_disconnect(self.next_song[2])
-            #         self.song_queue = []
-            #     else:
-            #         await self.vc_connect(self.next_song[2])
-            #         await self.debug("jukebox 7")
+            if voice_client.is_connected() and not (voice_client.is_playing() or voice_client.is_paused() and not self.looping):
+                await self.debug("jukebox 5")
+                await self.vc_play_song(self.next_song[0], self.next_song[2])
+                self.next_song = None
+            else:
+                if len(self.next_song[2].author.voice.channel.members) < 1:        #Tests if Robin is alone
+                    await self.debug("jukebox 6")
+                    await self.vc_disconnect(self.next_song[2])
+                    self.song_queue = []
+                else:
+                    await self.vc_connect(self.next_song[2])
+                    await self.debug("jukebox 7")
 
 
     @loop(seconds = 5)
