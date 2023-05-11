@@ -2134,7 +2134,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                 voice_obj = await voice_channel.connect(timeout=10, reconnect=True)
             except Exception as error:
                 print(error)
-                await self.debug(str(error))
+                await self.debug("test")
             await self.debug("conn7")
             self.vc[str(user.voice.channel.id)] = voice_obj
             await self.debug("conn8")
