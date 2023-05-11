@@ -2130,7 +2130,11 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                     if message.id in self.waiting_channels:
                         self.waiting_channels.remove(message.id)
             await self.debug("conn6")
-            voice_obj = await voice_channel.connect(timeout=10, reconnect=True)
+            try:
+                voice_obj = await voice_channel.connect(timeout=10, reconnect=True)
+            except Exception as error:
+                print(error)
+                await self.debug(str(error))
             await self.debug("conn7")
             self.vc[str(user.voice.channel.id)] = voice_obj
             await self.debug("conn8")
@@ -2200,8 +2204,8 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
         player = await YTDLSource.from_url(url, loop=None, stream=True)
         #await self.debug("two and two")
         try:
-            message.guild.voice_client.play(player, after=lambda e: print('Player error: %s' % e) if e else None)
-            #self.vc[str(message.author.voice.channel.id)].play(player, after=lambda e: print('Player error: %s' % e) if e else None)
+            #message.guild.voice_client.play(player, after=lambda e: print('Player error: %s' % e) if e else None)
+            self.vc[str(message.author.voice.channel.id)].play(player, after=lambda e: print('Player error: %s' % e) if e else None)
         except Exception as err:
             self.debug(str(err))
             return (player.title, player.url)
