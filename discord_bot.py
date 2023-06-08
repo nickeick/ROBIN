@@ -696,13 +696,13 @@ Join the Stardew Gang: <:chicken:804147857719951431>
             if message.guild.get_role(771408034957623348) in message.author.roles:
                 if self.think_lock == False:
                     await message.channel.send("🧠 This makes cents 🪙")
-                    think_select = (str(message.author),)
+                    think_select = (str(message.author.name),)
                     self.c.execute("SELECT points FROM braincell_points WHERE name=?", think_select)
                     points = self.c.fetchone()
                     if points == None:
-                        think_replace = (str(message.author), 1)
+                        think_replace = (str(message.author.name), 1)
                     else:
-                        think_replace = (str(message.author), points[0]+1)
+                        think_replace = (str(message.author.name), points[0]+1)
                     self.c.execute("REPLACE INTO braincell_points (name, points) VALUES (?, ?)", think_replace)
                     for member in message.guild.members:        # Server Genius
                         if message.guild.get_role(779433226560864267) in member.roles:
@@ -719,7 +719,7 @@ Join the Stardew Gang: <:chicken:804147857719951431>
                 await message.channel.send("You don't have the brain cell <:bonk:772161497031507968>")
 
         elif message.content.startswith('!count'):
-            think_select = (str(message.author),)
+            think_select = (str(message.author.name),)
             self.c.execute("SELECT points FROM braincell_points WHERE name=?", think_select)
             points = self.c.fetchone()
             message.channel.send("You have " + str(points[0]) + " Common Cents")
@@ -770,7 +770,7 @@ Join the Stardew Gang: <:chicken:804147857719951431>
                 assert give_re, give_message + ' has improper format'
                 give = (give_re.group(1), give_re.group(2))
                 assert message.guild.get_member_named(give[0]) != None, "Member does not exist"
-                author_select = (str(message.author),)
+                author_select = (str(message.author.name),)
                 self.c.execute('SELECT points FROM braincell_points WHERE name=?', author_select)
                 author_points = self.c.fetchone()
                 receive_select = (str(message.guild.get_member_named(give[0])),)
@@ -779,8 +779,8 @@ Join the Stardew Gang: <:chicken:804147857719951431>
                 assert author_points != None, "You have no Common Cents"
                 assert author_points[0] >= int(give[1]), "You do not have enough Common Cents to give"
                 assert int(give[1]) >= 0, "You cannot gift negative points"
-                assert str(message.author) != str(message.guild.get_member_named(give[0])), "You cannot gift to yourself"
-                author_replace = (str(message.author), author_points[0]-int(give[1]))
+                assert str(message.author.name) != str(message.guild.get_member_named(give[0])), "You cannot gift to yourself"
+                author_replace = (str(message.author.name), author_points[0]-int(give[1]))
                 self.c.execute("REPLACE INTO braincell_points (name, points) VALUES (?, ?)", author_replace)
                 if receive_points == None:
                     receive_replace = (str(message.guild.get_member_named(give[0])), int(give[1]))
@@ -989,7 +989,7 @@ Join the Stardew Gang: <:chicken:804147857719951431>
 
         elif message.content.startswith("!gamble"):
             #nickeick#9008
-            if str(message.author) == 'nickeick':
+            if str(message.author.name) == 'nickeick':
                 gamble_messages = message.content.replace('!gamble', '').strip().split(',')
                 self.c.execute('DELETE FROM casino')
                 for outcome in gamble_messages:
@@ -1016,19 +1016,19 @@ Join the Stardew Gang: <:chicken:804147857719951431>
                 bet_select = (value,)
                 self.c.execute("SELECT bets FROM casino WHERE outcome=?", bet_select)
                 ledger = self.c.fetchone()
-                bet = (str(message.author), num)
+                bet = (str(message.author.name), num)
                 if ledger[0] == '':
                     bet_replace = (value, str(bet))
                 else:
                     bet_replace = (value, ledger[0] + ',' + str(bet))         #add the bet to the end of the ledger
-                author_select = (str(message.author),)
+                author_select = (str(message.author.name),)
                 self.c.execute("SELECT points FROM braincell_points WHERE name=?", author_select)
                 author_points = self.c.fetchone()
                 robin_select = ("Robin Otto#7657",)
                 self.c.execute("SELECT points FROM braincell_points WHERE name=?", robin_select)
                 robin_points = self.c.fetchone()
                 assert author_points[0] >= num, "User bet more points than they had"
-                subtract_replace = (str(message.author), author_points[0] - num)
+                subtract_replace = (str(message.author.name), author_points[0] - num)
                 self.c.execute("REPLACE INTO braincell_points VALUES (?,?)", subtract_replace)
                 robin_replace = ("Robin Otto#7657", robin_points[0] + num)
                 self.c.execute("REPLACE INTO braincell_points VALUES (?,?)", robin_replace)
@@ -1040,7 +1040,7 @@ Join the Stardew Gang: <:chicken:804147857719951431>
 
 
         elif message.content.startswith("!payout"):
-            if str(message.author) == 'nickeick':
+            if str(message.author.name) == 'nickeick':
                 try:
                     payout_message = message.content.replace('!payout', '').strip()
                     self.c.execute('SELECT outcome, bets FROM casino')
@@ -1258,7 +1258,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                 await message.channel.send(self.next_song[0])
 
         elif message.content.startswith('!data'):
-            if str(message.author) == 'nickeick':
+            if str(message.author.name) == 'nickeick':
                 self.c.execute("SELECT * FROM music")
                 items = self.c.fetchall()
                 for item in items:
@@ -1408,11 +1408,11 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                 assert nft_info != None, "An NFT with that ID does not exist"
                 assert nft_info[2] != 0, "That NFT is not for sale"
                 assert nft_info[1] != str(message.author.id), "You cannot buy your own NFT"
-                self.c.execute("SELECT points FROM braincell_points WHERE name=?", (str(message.author),))
+                self.c.execute("SELECT points FROM braincell_points WHERE name=?", (str(message.author.name),))
                 author_info = self.c.fetchone()
                 assert author_info != None, "You do not have any Common Cents"
                 assert author_info[0] >= nft_info[2], "You do not have enough Common Cents"
-                self.c.execute("REPLACE INTO braincell_points (name, points) VALUES (?,?)", (str(message.author), author_info[0] - nft_info[2]))
+                self.c.execute("REPLACE INTO braincell_points (name, points) VALUES (?,?)", (str(message.author.name), author_info[0] - nft_info[2]))
                 owner = self.get_user(int(nft_info[1]))
                 self.c.execute("SELECT points FROM braincell_points WHERE name=?", (str(owner),))
                 owner_points = self.c.fetchone()
