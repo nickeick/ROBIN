@@ -278,7 +278,7 @@ class MyClient(Client):
 
 
         elif message.content.startswith('!execute'):
-            if str(message.author) == 'nickeick':
+            if str(message.author.name) == 'nickeick':
                 # channel = self.get_channel(1027646452371046430)
                 # for role in channel.guild.roles:
                 #     if 'gang' in str(role).lower():
@@ -363,7 +363,7 @@ Categories: gangs, braincell, play requests, calendar, singing, misc''')
                         com_message = message.content.replace('!addcom', '').strip().split(' ', 1)
                         if com_message[0][0] != '!' or com_message[0] == None or com_message[1] == None:
                             break
-                        addcom_insert = (com_message[0], com_message[1], str(message.author))
+                        addcom_insert = (com_message[0], com_message[1], str(message.author.name))
                         self.c.execute("INSERT INTO commands VALUES (?,?,?)", addcom_insert)
                         self.db.commit()
                         await message.channel.send('Made command ' + com_message[0] + ' to send ' + com_message[1])
@@ -400,7 +400,7 @@ Categories: gangs, braincell, play requests, calendar, singing, misc''')
                         await message.channel.send("What do you want to change it to?")
                         response = await self.wait_for('message', check=check, timeout=30)
                         self.c.execute("DELETE from commands WHERE command_name=? AND output=?", (com_message[0], com_message[1]))
-                        editcom_insert = (com_message[0], response.content, str(message.author))
+                        editcom_insert = (com_message[0], response.content, str(message.author.name))
                         self.c.execute("INSERT INTO commands VALUES (?,?,?)", editcom_insert)
                         self.db.commit()
                         await message.channel.send(com_message[0] + " has been updated")
@@ -413,7 +413,7 @@ Categories: gangs, braincell, play requests, calendar, singing, misc''')
 
 
         elif message.content.startswith('!commands'):
-            if str(message.author) == 'nickeick':
+            if str(message.author.name) == 'nickeick':
                 self.c.execute("SELECT command_name from commands")
                 items = list(set(self.c.fetchall()))
                 self.db.commit()
@@ -496,7 +496,7 @@ Join the Stardew Gang: <:chicken:804147857719951431>''')
                 #self.play_messages.append(sent)
                 if time == None:
                     time = ' '
-                play_sql = (message.channel.name, time, '', '', str(message.author))
+                play_sql = (message.channel.name, time, '', '', str(message.author.name))
                 # self.c.execute("REPLACE INTO play_requests (game, time, yes, no, requestor) VALUES (?,?,?,?,?)", play_sql)
                 # self.db.commit()
             else:
@@ -792,7 +792,7 @@ Join the Stardew Gang: <:chicken:804147857719951431>
 
         elif message.content.startswith('!replace'):
             await self.debug('test1')
-            if str(message.author) == 'nickeick':
+            if str(message.author.name) == 'nickeick':
                 await self.debug('test2')
                 replace_message = message.content.replace('!replace').strip().split()
                 self.c.execute('SELECT points FROM braincell_points WHERE name=?', replace_message[0])
