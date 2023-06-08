@@ -12,7 +12,7 @@ from datetime import date, timedelta, datetime
 from time import localtime, strftime
 from client import start, get_msg, send
 from os.path import isfile
-from os import remove, environ, listdir, rename, getcwd
+from os import remove, environ, listdir, rename, getcwd, replace
 import ffmpeg
 import youtube_dl
 from youtube_dl import YoutubeDL
@@ -40,6 +40,7 @@ OutQueue = Queue()
 
 intents = Intents.default()
 intents.members = True
+intents.voice_states = True
 #intents.message_content = True ## For newer versions of discord.py and python
 
 DISCONNECT_MESSAGE = "#DISCONNECT#"
@@ -277,7 +278,7 @@ class MyClient(Client):
 
 
         elif message.content.startswith('!execute'):
-            if str(message.author) == 'nickeick#9008':
+            if str(message.author) == 'nickeick':
                 # channel = self.get_channel(1027646452371046430)
                 # for role in channel.guild.roles:
                 #     if 'gang' in str(role).lower():
@@ -412,7 +413,7 @@ Categories: gangs, braincell, play requests, calendar, singing, misc''')
 
 
         elif message.content.startswith('!commands'):
-            if str(message.author) == 'nickeick#9008':
+            if str(message.author) == 'nickeick':
                 self.c.execute("SELECT command_name from commands")
                 items = list(set(self.c.fetchall()))
                 self.db.commit()
@@ -789,6 +790,16 @@ Join the Stardew Gang: <:chicken:804147857719951431>
             except AssertionError as err:
                 await message.channel.send(err)
 
+        elif message.content.startswith('!replace'):
+            if str(message.author) == 'nickeick':
+                replace_message = message.content.replace('!replace').strip().split()
+                self.c.execute('SELECT points FROM braincell_points WHERE name=?', replace_message[0])
+                one_points = self.c.fetchone()
+                replace_tuple = (replace_message[1], int(one_points[0]))
+                self.c.execute('REPLACE INTO braincell_points (name, points) VALUES (?, ?)', replace_tuple)
+                await message.channel.send('You have replaced ' + replace_message[0] + ' points (' + one_points[0] + ') to ' + replace_message[1])
+
+
 
 
 #--------------------------Events Calendar-----------------------------
@@ -969,7 +980,8 @@ Join the Stardew Gang: <:chicken:804147857719951431>
 
 
         elif message.content.startswith("!gamble"):
-            if str(message.author) == 'nickeick#9008':
+            #nickeick#9008
+            if str(message.author) == 'nickeick':
                 gamble_messages = message.content.replace('!gamble', '').strip().split(',')
                 self.c.execute('DELETE FROM casino')
                 for outcome in gamble_messages:
@@ -1020,7 +1032,7 @@ Join the Stardew Gang: <:chicken:804147857719951431>
 
 
         elif message.content.startswith("!payout"):
-            if str(message.author) == 'nickeick#9008':
+            if str(message.author) == 'nickeick':
                 try:
                     payout_message = message.content.replace('!payout', '').strip()
                     self.c.execute('SELECT outcome, bets FROM casino')
@@ -1238,7 +1250,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                 await message.channel.send(self.next_song[0])
 
         elif message.content.startswith('!data'):
-            if str(message.author) == 'nickeick#9008':
+            if str(message.author) == 'nickeick':
                 self.c.execute("SELECT * FROM music")
                 items = self.c.fetchall()
                 for item in items:
@@ -2133,8 +2145,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
             try:
                 voice_obj = await voice_channel.connect(timeout=10, reconnect=True)
             except Exception as error:
-                print(error)
-                await self.debug("test")
+                await self.debug('test')
             await self.debug("conn7")
             self.vc[str(user.voice.channel.id)] = voice_obj
             await self.debug("conn8")
@@ -2204,6 +2215,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
         player = await YTDLSource.from_url(url, loop=None, stream=True)
         #await self.debug("two and two")
         try:
+            #message.guild.voice_client
             #message.guild.voice_client.play(player, after=lambda e: print('Player error: %s' % e) if e else None)
             self.vc[str(message.author.voice.channel.id)].play(player, after=lambda e: print('Player error: %s' % e) if e else None)
         except Exception as err:
