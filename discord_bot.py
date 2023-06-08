@@ -791,12 +791,16 @@ Join the Stardew Gang: <:chicken:804147857719951431>
                 await message.channel.send(err)
 
         elif message.content.startswith('!replace'):
+            await self.debug('test1')
             if str(message.author) == 'nickeick':
+                await self.debug('test2')
                 replace_message = message.content.replace('!replace').strip().split()
                 self.c.execute('SELECT points FROM braincell_points WHERE name=?', replace_message[0])
                 one_points = self.c.fetchone()
+                await self.debug('test3')
                 replace_tuple = (replace_message[1], int(one_points[0]))
                 self.c.execute('REPLACE INTO braincell_points (name, points) VALUES (?, ?)', replace_tuple)
+                await self.debug('test4')
                 await message.channel.send('You have replaced ' + replace_message[0] + ' points (' + one_points[0] + ') to ' + replace_message[1])
 
 
