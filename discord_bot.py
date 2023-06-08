@@ -794,7 +794,7 @@ Join the Stardew Gang: <:chicken:804147857719951431>
             await self.debug('test1')
             if str(message.author.name) == 'nickeick':
                 await self.debug('test2')
-                replace_message = message.content.replace('!replace').strip().split()
+                replace_message = message.content.replace('!replace', '').strip().split()
                 self.c.execute('SELECT points FROM braincell_points WHERE name=?', (replace_message[0],))
                 one_points = self.c.fetchone()
                 await self.debug('test3')
