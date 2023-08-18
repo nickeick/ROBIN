@@ -773,19 +773,19 @@ Join the Stardew Gang: <:chicken:804147857719951431>
                 author_select = (str(message.author.name),)
                 self.c.execute('SELECT points FROM braincell_points WHERE name=?', author_select)
                 author_points = self.c.fetchone()
-                receive_select = (str(message.guild.get_member_named(give[0])),)
+                receive_select = (str(message.guild.get_member_named(give[0]).name),)
                 self.c.execute('SELECT points FROM braincell_points WHERE name=?', receive_select)
                 receive_points = self.c.fetchone()
                 assert author_points != None, "You have no Common Cents"
                 assert author_points[0] >= int(give[1]), "You do not have enough Common Cents to give"
                 assert int(give[1]) >= 0, "You cannot gift negative points"
-                assert str(message.author.name) != str(message.guild.get_member_named(give[0])), "You cannot gift to yourself"
+                assert str(message.author.name) != str(message.guild.get_member_named(give[0]).name), "You cannot gift to yourself"
                 author_replace = (str(message.author.name), author_points[0]-int(give[1]))
                 self.c.execute("REPLACE INTO braincell_points (name, points) VALUES (?, ?)", author_replace)
                 if receive_points == None:
-                    receive_replace = (str(message.guild.get_member_named(give[0])), int(give[1]))
+                    receive_replace = (str(message.guild.get_member_named(give[0]).name), int(give[1]))
                 else:
-                    receive_replace = (str(message.guild.get_member_named(give[0])), receive_points[0]+int(give[1]))
+                    receive_replace = (str(message.guild.get_member_named(give[0]).name), receive_points[0]+int(give[1]))
                 self.c.execute("REPLACE INTO braincell_points (name, points) VALUES (?, ?)", receive_replace)
                 self.db.commit()
                 await message.channel.send("You have given " + give[1] + " Common Cents to " + give[0])
