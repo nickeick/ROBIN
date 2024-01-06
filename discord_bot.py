@@ -2407,7 +2407,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                 await member.remove_roles(braincell_role)
         size = len(not_bots)
         braincell_amount = 2
-        for times in range(2)
+        for times in range(2):
             new_user = randint(1,size)
             i = 0
             for member in not_bots:

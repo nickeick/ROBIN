@@ -3,3 +3,4 @@ extra/
 ffmpeg/
 discord.db
 logs.txt
+__pycache__/
