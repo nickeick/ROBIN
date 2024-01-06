@@ -55,59 +55,59 @@ VOICE_SEND_MESSAGE = "#VOICESEND#"
 #nfts (id integer UNIQUE, url text, userid text, price integer)
 
 #REST SECTION
-app = Flask(__name__)
-api = Api(app)
+# app = Flask(__name__)
+# api = Api(app)
 
-parser = reqparse.RequestParser()
-parser.add_argument('message')
+# parser = reqparse.RequestParser()
+# parser.add_argument('message')
 
-class ChannelMessage(Resource):
-    def get(self, channel):
-        InQueue.put((REQUEST_MESSAGE, channel))
-        while True:
-            if not OutQueue.empty():
-                messages = OutQueue.get()
-                dictionary = {"messages": []}
-                for message in messages:
-                    temp = {message[0]: [message[1], message[2]]}
-                    dictionary["messages"].append(temp)
-                break
-            else:
-                time.sleep(0.1)
-        return jsonify(dictionary)  #most recent 10 messages
+# class ChannelMessage(Resource):
+#     def get(self, channel):
+#         InQueue.put((REQUEST_MESSAGE, channel))
+#         while True:
+#             if not OutQueue.empty():
+#                 messages = OutQueue.get()
+#                 dictionary = {"messages": []}
+#                 for message in messages:
+#                     temp = {message[0]: [message[1], message[2]]}
+#                     dictionary["messages"].append(temp)
+#                 break
+#             else:
+#                 time.sleep(0.1)
+#         return jsonify(dictionary)  #most recent 10 messages
 
-    def post(self, channel):
-        args = parser.parse_args()
-        message = args['message']
-        InQueue.put((channel, message))
-        return {"data": message}
+#     def post(self, channel):
+#         args = parser.parse_args()
+#         message = args['message']
+#         InQueue.put((channel, message))
+#         return {"data": message}
 
 
-class ChannelSing(Resource):
-    def get(self):
-        InQueue.put((VOICE_REQUEST_MESSAGE))
-        while True:
-            if not OutQueue.empty():
-                messages = OutQueue.get()
-                dictionary = {"messages": []}
-                position = 0
-                for message in messages:
-                    position += 1
-                    temp = {str(position): [message[0], message[1]]}
-                    dictionary["messages"].append(temp)
-                break
-            else:
-                time.sleep(0.1)
-        return jsonify(dictionary)
+# class ChannelSing(Resource):
+#     def get(self):
+#         InQueue.put((VOICE_REQUEST_MESSAGE))
+#         while True:
+#             if not OutQueue.empty():
+#                 messages = OutQueue.get()
+#                 dictionary = {"messages": []}
+#                 position = 0
+#                 for message in messages:
+#                     position += 1
+#                     temp = {str(position): [message[0], message[1]]}
+#                     dictionary["messages"].append(temp)
+#                 break
+#             else:
+#                 time.sleep(0.1)
+#         return jsonify(dictionary)
 
-    def post(self):
-        args = parser.parse_args()
-        message = args['message']
-        InQueue.put((VOICE_SEND, message))
-        return {"data": message}
+#     def post(self):
+#         args = parser.parse_args()
+#         message = args['message']
+#         InQueue.put((VOICE_SEND, message))
+#         return {"data": message}
 
-api.add_resource(ChannelSing, "/robin/sing")
-api.add_resource(ChannelMessage, "/robin/message/<string:channel>")
+# api.add_resource(ChannelSing, "/robin/sing")
+# api.add_resource(ChannelMessage, "/robin/message/<string:channel>")
 
 
 # Suppress noise about console usage from errors
@@ -205,6 +205,7 @@ class MyClient(Client):
         self.jeopardy = False
         self.jeopardy_host = ""
         self.answered = False
+        self.think_locked = []
         self.think_lock = False
         self.waiting_channels = []
         self.waitlists = {"overwatch gang": [],
@@ -669,7 +670,8 @@ Join the Stardew Gang: <:chicken:804147857719951431>
 
         elif message.content.startswith('!think'):
             if message.guild.get_role(771408034957623348) in message.author.roles:
-                if self.think_lock == False:
+                #if self.think_lock == False:
+                if message.author.id not in self.think_locked:
                     await message.channel.send("🧠 This makes cents 🪙")
                     think_select = (str(message.author),)
                     self.c.execute("SELECT points FROM braincell_points WHERE name=?", think_select)
@@ -687,7 +689,8 @@ Join the Stardew Gang: <:chicken:804147857719951431>
                     genius_member = message.guild.get_member_named(genius_name[0])
                     await genius_member.add_roles(message.guild.get_role(779433226560864267))
                     self.db.commit()
-                    self.think_lock = True
+                    self.think_locked.append(message.author.id)
+                    #self.think_lock = True
                 else:
                     await message.channel.send("You've already got your cent <:bonk:772161497031507968>")
             else:
@@ -2293,13 +2296,16 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
             if braincell_role in member.roles:
                 await member.remove_roles(braincell_role)
         size = len(not_bots)
-        new_user = randint(1,size)
-        i = 0
-        for member in not_bots:
-            i+=1
-            if i == new_user:
-                await member.add_roles(braincell_role)
-        self.think_lock = False
+        braincell_amount = 2
+        for times in range(2)
+            new_user = randint(1,size)
+            i = 0
+            for member in not_bots:
+                i+=1
+                if i == new_user:
+                    await member.add_roles(braincell_role)
+        self.think_locked = []
+        #self.think_lock = False
 
 
     @loop(hours = 3)
@@ -2427,8 +2433,8 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                     self.db.commit()
 #```````````````````````````````````````````````````````````````````````````````
 
-def start(host):
-    app.run(host=host)
+#def start(host):
+    #app.run(host=host)
 
 if __name__ == '__main__':
     api_start = Thread(target=start, args=('0.0.0.0',))
