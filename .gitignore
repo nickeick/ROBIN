@@ -1,3 +1,5 @@
 .env
 extra/
-FFmpeg/
+ffmpeg/
+discord.db
+logs.txt
