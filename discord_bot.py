@@ -1618,13 +1618,60 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
         elif message.content.startswith('!alive'):
             await message.channel.send("I am alive. - Robin")
 
+        elif message.content.startswith('!tallyho'):
+            for role in message.author.roles:
+                if role.name == "Server Admin":
+                    message_content = message.content.replace('!tallyho', '').strip()
+                    if message_content == '':
+                        await message.content.send('To create a counter, type "!tallyho [input]" where [input] is your counter name (include the !)')
+                        failed = True
+                    self.c.execute("SELECT * FROM counters")
+                    counters = self.c.fetchall()
+                    self.c.execute("SELECT * FROM commands")
+                    commands = self.c.fetchall()
+                    items = counters + commands
+                    failed = False
+                    for item in items:
+                        if message.content == item[0]:
+                            await message.channel.send('This counter/commands already exists: ' + message_content)
+                            failed = True
+                    if failed == False:
+                        counter_insert = (message_content, 0)
+                        self.c.execute("INSERT INTO counters VALUES (?,?)", counter_insert)
+                        self.db.commit()
+                        await message.channel.send('Added counter ' + message_content)
+                else:
+                    await message.channel.send('You do not have permission to use this command! Must have role: Server Admin')
+
+
         elif message.content.startswith('!'):
             self.c.execute("SELECT * FROM commands")        # to be optimized
             commands = self.c.fetchall()
             for command in commands:
                 if message.content == command[0]:
                     await message.channel.send(command[1])
-            self.db.commit()
+            self.c.execute("SELECT * FROM counters")
+            counters = self.c.fetchall()
+            message_list = message.content.split()
+            for counter in counters:
+                if message_list[0] == counter:
+                    self.c.execute("SELECT count FROM counters WHERE counter = ?", (message_list[0],))
+                    count = self.c.fetchone()
+                    if len(message_list) == 1:
+                        await message.channel.send(message.content + " has happened " + str(times) + " times")
+                    elif len(message_list) == 2:
+                        try:
+                            int(message_list[1])
+                        except ValueError:
+                            await message.channel.send(message_list[1] + ' is not a valid number')
+                        else:
+                            times = count[0] + int(message_list[1])
+                            await message.channel.send(message.content + " has happened " + str(times) + " times")
+                            self.c.execute("REPLACE INTO counters (counter, count) VALUES (?, ?)", (message.content, times))
+                            self.db.commit()
+                    else:
+                        await message.channel.send('You have added too many parameters to this command')
+                    
 
 #----------------------------EVENTS-------------------------------------------
 
