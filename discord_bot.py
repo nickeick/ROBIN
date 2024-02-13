@@ -1660,7 +1660,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                     self.c.execute("SELECT count FROM counters WHERE counter = ?", (message_list[0],))
                     count = self.c.fetchone()
                     if len(message_list) == 1:
-                        await message.channel.send(message.content + " has happened " + str(times) + " times")
+                        await message.channel.send(message.content + " has happened " + str(count[0]) + " times")
                     elif len(message_list) == 2:
                         try:
                             int(message_list[1])
