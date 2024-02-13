@@ -1619,8 +1619,10 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
             await message.channel.send("I am alive. - Robin")
 
         elif message.content.startswith('!tallyho'):
+            permission = False
             for role in message.author.roles:
                 if role.name == "Server Admin":
+                    permission = True
                     message_content = message.content.replace('!tallyho', '').strip()
                     if message_content == '':
                         await message.content.send('To create a counter, type "!tallyho [input]" where [input] is your counter name (include the !)')
@@ -1640,8 +1642,8 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                         self.c.execute("INSERT INTO counters VALUES (?,?)", counter_insert)
                         self.db.commit()
                         await message.channel.send('Added counter ' + message_content)
-                else:
-                    await message.channel.send('You do not have permission to use this command! Must have role: Server Admin')
+            if permission == False:
+                await message.channel.send('You do not have permission to use this command! Must have role: Server Admin')
 
 
         elif message.content.startswith('!'):
@@ -1654,7 +1656,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
             counters = self.c.fetchall()
             message_list = message.content.split()
             for counter in counters:
-                if message_list[0] == counter:
+                if message_list[0] == counter[0]:
                     self.c.execute("SELECT count FROM counters WHERE counter = ?", (message_list[0],))
                     count = self.c.fetchone()
                     if len(message_list) == 1:
