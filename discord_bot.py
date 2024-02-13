@@ -1669,7 +1669,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                         else:
                             times = count[0] + int(message_list[1])
                             await message.channel.send(message_list[0] + " has happened " + str(times) + " times")
-                            self.c.execute("REPLACE INTO counters (counter, count) VALUES (?, ?)", (message.content, times))
+                            self.c.execute("REPLACE INTO counters (counter, count) VALUES (?, ?)", (message_list[0], times))
                             self.db.commit()
                     else:
                         await message.channel.send('You have added too many parameters to this command')
