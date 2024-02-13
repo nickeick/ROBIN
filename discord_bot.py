@@ -1657,7 +1657,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
             message_list = message.content.split()
             for counter in counters:
                 if message_list[0] == counter[0]:
-                    self.c.execute("SELECT count FROM counters WHERE counter = ?", (message_list[0],))
+                    self.c.execute("SELECT count FROM counters WHERE counter=?", (message_list[0],))
                     count = self.c.fetchone()
                     if len(message_list) == 1:
                         await message.channel.send(message.content + " has happened " + str(count[0]) + " times")
@@ -1665,10 +1665,10 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                         try:
                             int(message_list[1])
                         except ValueError:
-                            await message.channel.send(message_list[1] + ' is not a valid number')
+                            await message.channel.send(message_list[1] + ' is not a valid number') 
                         else:
                             times = count[0] + int(message_list[1])
-                            await message.channel.send(message.content + " has happened " + str(times) + " times")
+                            await message.channel.send(message_list[0] + " has happened " + str(times) + " times")
                             self.c.execute("REPLACE INTO counters (counter, count) VALUES (?, ?)", (message.content, times))
                             self.db.commit()
                     else:
