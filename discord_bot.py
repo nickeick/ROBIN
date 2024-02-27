@@ -280,10 +280,14 @@ class MyClient(Client):
 
         elif message.content.startswith('!execute'):
             if str(message.author.name) == 'nickeick':
-                self.c.execute("SELECT * FROM braincell_points ORDER BY points DESC")
-                items = self.c.fetchall()
-                for item in items:
-                    await self.debug(item[0])
+                # self.c.execute("SELECT * FROM braincell_points ORDER BY points DESC")
+                # items = self.c.fetchall()
+                # for item in items:
+                #     await self.debug(item[0])
+                channel = self.get_channel(1027646452371046430)
+                sent = await channel.send("Hoyo Gang"))
+                await sent.add_reaction(self.get_emoji(1067155138235596810))
+                await sent.add_reaction(self.get_emoji(1067157267922821220))
                 # channel = self.get_channel(1027646452371046430)
                 # for role in channel.guild.roles:
                 #     if 'gang' in str(role).lower():
