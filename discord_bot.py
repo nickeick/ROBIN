@@ -285,7 +285,7 @@ class MyClient(Client):
                 # for item in items:
                 #     await self.debug(item[0])
                 channel = self.get_channel(1027646452371046430)
-                sent = await channel.send("Hoyo Gang"))
+                sent = await channel.send("Hoyo Gang")
                 await sent.add_reaction(self.get_emoji(1067155138235596810))
                 await sent.add_reaction(self.get_emoji(1067157267922821220))
                 # channel = self.get_channel(1027646452371046430)
