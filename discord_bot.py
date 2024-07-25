@@ -1895,7 +1895,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
 
                 for item in items:
                     try:
-                        message.guild.get_member_named(item[0]).display_name
+                        reaction.message.guild.get_member_named(item[0]).display_name
                         filteredItems.append(item)
                     except AttributeError:
                         continue
@@ -1948,7 +1948,7 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
 
                 for item in items:
                     try:
-                        message.guild.get_member_named(item[0]).display_name
+                        reaction.message.guild.get_member_named(item[0]).display_name
                         filteredItems.append(item)
                     except AttributeError:
                         continue
