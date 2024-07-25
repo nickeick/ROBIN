@@ -1891,10 +1891,18 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                     number = 20
                 self.c.execute("SELECT * FROM braincell_points ORDER BY points DESC")
                 items = self.c.fetchall()
-                self.db.commit()
+                filteredItems = []
+
+                for item in items:
+                try:
+                    message.guild.get_member_named(item[0]).display_name
+                    filteredItems.append(item)
+                except AttributeError:
+                    continue
+
                 to_send = '🪙  **Common Cents Leaderboard:**  🪙\n'
                 j = 0
-                for item in items:
+                for item in filteredItems:
                     j+=1
                     if j > int(number) - 10:
                         break
@@ -1936,12 +1944,20 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                         number_test = True
                 self.c.execute("SELECT * FROM braincell_points ORDER BY points DESC")
                 items = self.c.fetchall()
-                self.db.commit()
-                if int(number) + 10 > len(items):
-                    number = len(items) - 10
+                filteredItems = []
+
+                for item in items:
+                try:
+                    message.guild.get_member_named(item[0]).display_name
+                    filteredItems.append(item)
+                except AttributeError:
+                    continue
+                
+                if int(number) + 10 > len(filteredItems):
+                    number = len(filteredItems) - 10
                 to_send = '🪙  **Common Cents Leaderboard:**  🪙\n'
                 j = 0
-                for item in items:
+                for item in filteredItems:
                     j+=1
                     if j > int(number) + 10:
                         break
