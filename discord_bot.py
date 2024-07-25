@@ -1894,11 +1894,11 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                 filteredItems = []
 
                 for item in items:
-                try:
-                    message.guild.get_member_named(item[0]).display_name
-                    filteredItems.append(item)
-                except AttributeError:
-                    continue
+                    try:
+                        message.guild.get_member_named(item[0]).display_name
+                        filteredItems.append(item)
+                    except AttributeError:
+                        continue
 
                 to_send = '🪙  **Common Cents Leaderboard:**  🪙\n'
                 j = 0
@@ -1947,11 +1947,11 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                 filteredItems = []
 
                 for item in items:
-                try:
-                    message.guild.get_member_named(item[0]).display_name
-                    filteredItems.append(item)
-                except AttributeError:
-                    continue
+                    try:
+                        message.guild.get_member_named(item[0]).display_name
+                        filteredItems.append(item)
+                    except AttributeError:
+                        continue
                 
                 if int(number) + 10 > len(filteredItems):
                     number = len(filteredItems) - 10
