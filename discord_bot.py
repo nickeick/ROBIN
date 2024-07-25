@@ -271,6 +271,40 @@ class MyClient(Client):
             self.data_backup.restart()
         await self.debug("Robin has restarted!")
 
+    def printLeaderboard(self, message, lowerBound: int, upperBound: int):
+        self.c.execute("SELECT * FROM braincell_points ORDER BY points DESC")
+        items = self.c.fetchall()
+        filteredItems = lambda x : message.guild.get_member_named(x[0]) is not None, items
+        if (lowerBound - 1) > len(filteredItems):
+            to_send = message.content
+            return to_send
+
+        to_send = '🪙  **Common Cents Leaderboard:**  🪙\n'
+        for index in range(lowerBound, upperBound):
+            if upperBound > len(filteredItems):
+                break
+
+            item = filteredItems[index - 1]
+            name = message.guild.get_member_named(item[0]).display_name
+            to_send += str(index) + '. ' + name + ':'
+
+            # buffer up to 60 characters, but with less b/c of name
+            buffer = ' ' * (60 - len(name)*2)
+            to_send += buffer
+
+            cents = item[1]
+            while cents > 0:
+                if (cents // 100) > 0:
+                    to_send += '💎'
+                    cents -= 100
+                elif (cents // 10) > 0:
+                    to_send += '💵'
+                    cents -= 10
+                else:
+                    to_send += '🪙'
+                    cents -= 1
+            to_send += '|   ' + str(item[1]) + '\n'
+        return to_send
 
     async def on_message(self, message):
         # don't respond to ourselves
@@ -732,37 +766,7 @@ Join the Stardew Gang: <:chicken:804147857719951431>
             message.channel.send("You have " + str(points[0]) + " Common Cents")
 
         elif message.content.startswith('!leaderboard'):
-            self.c.execute("SELECT * FROM braincell_points ORDER BY points DESC")
-            items = self.c.fetchall()
-            self.db.commit()
-            to_send = '🪙  **Common Cents Leaderboard:**  🪙\n'
-            j = 0
-            for item in items:
-                j+=1
-                if j > 10:
-                    break
-                try:
-                    name = message.guild.get_member_named(item[0]).display_name
-                except AttributeError:
-                    j-=1
-                    continue
-                to_send += str(j) + '. ' + name + ':'
-                i = len(name)*2
-                while i < 60:
-                    to_send += ' '
-                    i+=1
-                cents = item[1]
-                while cents > 0:
-                    if (cents//100) > 0:
-                        to_send += '💎'
-                        cents -= 100
-                    elif (cents//10) > 0:
-                        to_send += '💵'
-                        cents -= 10
-                    else:
-                        to_send += '🪙'
-                        cents -= 1
-                to_send += '|   ' + str(item[1]) + '\n'
+            to_send = self.printLeaderboard(message, 1, 10)
             sent = await message.channel.send(to_send)
             await sent.add_reaction("⬅️")
             await sent.add_reaction("➡️")
@@ -1878,114 +1882,31 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
         #!leaderboard
         if reaction.message.author == self.user and "Common Cents Leaderboard:" in reaction.message.content and user != self.user:
             if reaction.emoji == "⬅️":
-                number_test = False
-                for char in reaction.message.content:   #get the number of the last rank
-                    if char == '.':
-                        number_test = False
-                    if number_test:
-                        number += char
-                    if char == '\n':
-                        number = ''
-                        number_test = True
-                if int(number) < 20:
-                    number = 20
-                self.c.execute("SELECT * FROM braincell_points ORDER BY points DESC")
-                items = self.c.fetchall()
-                filteredItems = []
+                content: str = reaction.message.content
+                contentLines = content.split("\n")
 
-                for item in items:
-                    try:
-                        reaction.message.guild.get_member_named(item[0]).display_name
-                        filteredItems.append(item)
-                    except AttributeError:
-                        continue
+                # 11-20
+                startingIndex = int(contentLines[1].split(".")[0]) - 10
+                endingIndex = startingIndex + 9
 
-                to_send = '🪙  **Common Cents Leaderboard:**  🪙\n'
-                j = 0
-                for item in filteredItems:
-                    j+=1
-                    if j > int(number) - 10:
-                        break
-                    if j > int(number) - 20:
-                        try:
-                            name = reaction.message.guild.get_member_named(item[0]).display_name
-                        except AttributeError:
-                            j-=1
-                            continue
-                        to_send += str(j) + '. ' + name + ':'
-                        i = len(name)*2
-                        while i < 60:
-                            to_send += ' '
-                            i+=1
-                        cents = item[1]
-                        while cents > 0:
-                            if (cents//100) > 0:
-                                to_send += '💎'
-                                cents -= 100
-                            elif (cents//10) > 0:
-                                to_send += '💵'
-                                cents -= 10
-                            else:
-                                to_send += '🪙'
-                                cents -= 1
-                        to_send += '|   ' + str(item[1]) + '\n'
-                await reaction.message.edit(content=to_send)
-                await reaction.remove(user)
+                if(startingIndex >= 1):
+                    to_send = self.printLeaderboard(reaction.message, startingIndex, endingIndex)
+                    await reaction.message.edit(content=to_send)
+                    await reaction.remove(user)
 
             if reaction.emoji == "➡️":
-                number_test = False
-                for char in reaction.message.content:   #get the number of the last rank
-                    if char == '.':
-                        number_test = False
-                    if number_test:
-                        number += char
-                    if char == '\n':
-                        number = ''
-                        number_test = True
-                self.c.execute("SELECT * FROM braincell_points ORDER BY points DESC")
-                items = self.c.fetchall()
-                filteredItems = []
+                content: str = reaction.message.content
+                contentLines = content.split("\n")
 
-                for item in items:
-                    try:
-                        reaction.message.guild.get_member_named(item[0]).display_name
-                        filteredItems.append(item)
-                    except AttributeError:
-                        continue
-                
-                if int(number) + 10 > len(filteredItems):
-                    number = len(filteredItems) - 10
-                to_send = '🪙  **Common Cents Leaderboard:**  🪙\n'
-                j = 0
-                for item in filteredItems:
-                    j+=1
-                    if j > int(number) + 10:
-                        break
-                    if j > int(number):
-                        try:
-                            name = reaction.message.guild.get_member_named(item[0]).display_name
-                        except AttributeError:
-                            j-=1
-                            continue
-                        to_send += str(j) + '. ' + name + ':'
-                        i = len(name)*2
-                        while i < 60:
-                            to_send += ' '
-                            i+=1
-                        cents = item[1]
-                        while cents > 0:
-                            if (cents//100) > 0:
-                                to_send += '💎'
-                                cents -= 100
-                            elif (cents//10) > 0:
-                                to_send += '💵'
-                                cents -= 10
-                            else:
-                                to_send += '🪙'
-                                cents -= 1
-                        to_send += '|   ' + str(item[1]) + '\n'
-                await reaction.message.edit(content=to_send)
-                await reaction.remove(user)
+                # 11-20
+                startingIndex = int(contentLines[1].split(".")[0]) + 10
+                endingIndex = startingIndex + 9
+
+                if(startingIndex >= 1):
+                    to_send = self.printLeaderboard(reaction.message, startingIndex, endingIndex)
+                    await reaction.message.edit(content=to_send)
+                    await reaction.remove(user)
+
         #for !sing
         if reaction.message.author == self.user and len(reaction.message.embeds) != 0 and user != self.user:
             if "Robin is now singing:" in reaction.message.embeds[0].title:
