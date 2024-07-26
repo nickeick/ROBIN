@@ -274,7 +274,7 @@ class MyClient(Client):
     def printLeaderboard(self, message, lowerBound: int, upperBound: int):
         self.c.execute("SELECT * FROM braincell_points ORDER BY points DESC")
         items = self.c.fetchall()
-        filteredItems = lambda x : message.guild.get_member_named(x[0]) is not None, items
+        filteredItems = filter(lambda x : message.guild.get_member_named(x[0]) is not None, items)
         if (lowerBound - 1) > len(filteredItems):
             to_send = message.content
             return to_send
