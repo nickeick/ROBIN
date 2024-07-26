@@ -280,8 +280,8 @@ class MyClient(Client):
             return to_send
 
         to_send = '🪙  **Common Cents Leaderboard:**  🪙\n'
-        for index in range(lowerBound, upperBound):
-            if upperBound > len(filteredItems):
+        for index in range(lowerBound, upperBound + 1):
+            if index > len(filteredItems):
                 break
 
             item = filteredItems[index - 1]
@@ -1892,7 +1892,8 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                 if(startingIndex >= 1):
                     to_send = self.printLeaderboard(reaction.message, startingIndex, endingIndex)
                     await reaction.message.edit(content=to_send)
-                    await reaction.remove(user)
+
+                await reaction.remove(user)
 
             if reaction.emoji == "➡️":
                 content: str = reaction.message.content
@@ -1902,10 +1903,9 @@ When is it? How often is it? Where can I learn more? Answer: Check #announcement
                 startingIndex = int(contentLines[1].split(".")[0]) + 10
                 endingIndex = startingIndex + 9
 
-                if(startingIndex >= 1):
-                    to_send = self.printLeaderboard(reaction.message, startingIndex, endingIndex)
-                    await reaction.message.edit(content=to_send)
-                    await reaction.remove(user)
+                to_send = self.printLeaderboard(reaction.message, startingIndex, endingIndex)
+                await reaction.message.edit(content=to_send)
+                await reaction.remove(user)
 
         #for !sing
         if reaction.message.author == self.user and len(reaction.message.embeds) != 0 and user != self.user:
