@@ -14,11 +14,13 @@ from discord.ext.commands import Context
 from discord.ext import commands
 from aiohttp import ClientSession
 
+from database_manager import DatabaseManager
 
 class CustomBot(commands.Bot):
     def __init__(
         self,
         *args,
+        db_manager: DatabaseManager,
         web_client: ClientSession,
         testing_guild_id: Optional[int] = None,
         **kwargs,
@@ -26,6 +28,7 @@ class CustomBot(commands.Bot):
         super().__init__(*args, **kwargs)
         self.web_client = web_client
         self.testing_guild_id = testing_guild_id
+        self.db_manager = db_manager
 
 
 
@@ -58,6 +61,10 @@ class CustomBot(commands.Bot):
     async def on_ready(self):
         print(f'Logged in as {self.user} (ID: {self.user.id})')
 
+    async def close(self):
+        await super().close()
+        await self.db_manager.close()
+
 
 
 async def main():
@@ -89,6 +96,7 @@ async def main():
     handler.setFormatter(formatter)
     logger.addHandler(handler)
     intents = discord.Intents.default()
+    intents.guilds = True
     intents.members = True
     intents.voice_states = True
     intents.message_content = True
@@ -96,11 +104,11 @@ async def main():
     # Alternatively, you could use:
     # discord.utils.setup_logging(handler=handler, root=False)
 
-    async with ClientSession() as our_client:
+    async with ClientSession() as our_client, DatabaseManager(DATABASE_PATH) as db_manager:
         # 2. We become responsible for starting the bot.
-        async with CustomBot(commands.when_mentioned, web_client=our_client, intents=intents, testing_guild_id=TEST_GUILD) as bot:
+            async with CustomBot(commands.when_mentioned, db_manager=db_manager, web_client=our_client, intents=intents, testing_guild_id=TEST_GUILD) as bot:
 
-            await bot.start(os.getenv('TOKEN'))
+                await bot.start(os.getenv('TOKEN'))
 
 
 

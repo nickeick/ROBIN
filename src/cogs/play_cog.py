@@ -38,7 +38,9 @@ class PlayCog(commands.Cog):
                 await member.remove_roles(guild.get_role(id_type))
 
     @app_commands.command()
-    async def play(self, interaction: Interaction, time: str):
+    async def play(self, interaction: Interaction, time: str=None):
+        if time == None:
+            time = ''
         await self.remove_roles(interaction.guild)
         mention = ""
         for role in interaction.guild.roles:
@@ -47,9 +49,9 @@ class PlayCog(commands.Cog):
         if mention == "":
             sent = await interaction.response.send_message('Dojo, is anyone interested in playing ' + time + "\n\nYesses:\n*" + interaction.user.name + '*', view=PlayView())
         else:
-            sent = await interaction.response.send_message(mention + 'is anyone interested in playing ' + time + "\n\nYesses:*" + interaction.user.name + '*', view=PlayView())
+            sent = await interaction.response.send_message(mention + 'is anyone interested in playing ' + time + "\n\nYesses:\n*" + interaction.user.name + '*', view=PlayView())
 
-        
+
 
 async def setup(bot):
     await bot.add_cog(PlayCog(bot))
