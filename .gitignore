@@ -4,3 +4,6 @@ ffmpeg/
 discord.db
 logs.txt
 __pycache__/
+discord/
+*.log
+testenv/

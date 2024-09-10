@@ -14,8 +14,8 @@ from client import start, get_msg, send
 from os.path import isfile
 from os import remove, environ, listdir, rename, getcwd, replace
 import ffmpeg
-import youtube_dl
-from youtube_dl import YoutubeDL
+#import youtube_dl
+#from youtube_dl import YoutubeDL
 import yt_dlp
 from dotenv import load_dotenv
 from sys import platform
