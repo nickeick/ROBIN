@@ -1,10 +1,10 @@
 from discord.ext import commands
 from discord.ext.commands import Context
-from discord import app_commands, Member, Payload
+from discord import app_commands, Member, RawReactionActionEvent
 
 IS_ENABLED = True
 
-class JoinCog(commands.Cog):
+class EventsCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.initiate_role_id = 759600936435449896
@@ -16,15 +16,13 @@ class JoinCog(commands.Cog):
     
     @commands.Cog.listener()
     async def on_member_join(self, member: Member):
-        try:
-            await member.add_roles(member.guild.get_role(self.initiate_role_id)) # Assign initiate role on user join
-        except:
-            pass
+        await member.add_roles(member.guild.get_role(self.initiate_role_id)) # Assign initiate role on user join
+
 
     @commands.Cog.listener()
-    async def on_reaction_add(self, payload: Payload):
+    async def on_raw_reaction_add(self, payload: RawReactionActionEvent):
         if str(payload.emoji) == "☑️" and payload.message_id == 759611108541071380:
             await payload.member.remove_roles(payload.member.guild.get_role(self.initiate_role_id))
 
 async def setup(bot):
-    await bot.add_cog(JoinCog(bot))
+    await bot.add_cog(EventsCog(bot))
