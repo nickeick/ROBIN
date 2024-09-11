@@ -51,15 +51,15 @@ class DatabaseManager:
             await self.execute_with_retries("REPLACE INTO braincell_points (name, points) VALUES (?, ?)", (name, 1))
         await self.commit()
 
-    async def get_brain_cells(self, name=None):
+    async def get_brain_cells(self, name):
         points = await self.execute_with_retries('SELECT points FROM braincell_points WHERE name=?', (name,))
         return points[0]
 
-    async def get_point_leader(self, name):
+    async def get_point_leader(self):
         leader = await self.execute_with_retries("SELECT name FROM braincell_points ORDER BY points DESC", ())
         return leader[0]
 
-    async def get_all_points(self):
+    async def get_all_points(self) -> list:
         points = await self.execute_with_retries("SELECT * FROM braincell_points ORDER BY points DESC", (), fetchall=True)
         return points
     
@@ -68,6 +68,23 @@ class DatabaseManager:
         new_count = count[0] + 1
         await self.execute_with_retries("REPLACE INTO counters (counter, count) VALUES (?, ?)", (counter, new_count))
         return new_count
+
+    async def add_command(self, command, output, author):
+        await self.execute_with_retries("INSERT INTO commands VALUES (?,?,?)", (command, output, author))
+
+    async def delete_command(self, command):
+        await self.execute_with_retries("DELETE from commands WHERE command_name=?", (command,))
+
+    async def delete_command_output(self, command, output):
+        await self.execute_with_retries("DELETE from commands WHERE command_name=? AND output=?", (command, output))
+
+    async def does_command_exist(self, command, output) -> bool:
+        comm = await self.execute_with_retries("SELECT * from commands WHERE command_name=? AND output=?", (command, output))
+        return comm != None
+
+    async def get_all_commands(self) -> list:
+        comms = await self.execute_with_retries("SELECT command_name from commands", (), fetchall=True)
+        return comms
 
     async def commit(self):
         with self.connection as conn:
