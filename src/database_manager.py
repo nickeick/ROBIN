@@ -86,6 +86,10 @@ class DatabaseManager:
         comms = await self.execute_with_retries("SELECT command_name from commands", (), fetchall=True)
         return comms
 
+    async def get_output(self, command):
+        output = await self.execute_with_retries("SELECT output from commands WHERE command_name=?", (command,), fetchall=True)
+        return output
+
     async def commit(self):
         with self.connection as conn:
             conn.commit()

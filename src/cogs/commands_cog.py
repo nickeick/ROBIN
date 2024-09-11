@@ -1,6 +1,6 @@
 from discord.ext import commands
-from discord.ext.commands import Context
-from discord import app_commands, Interaction
+from discord.ext.commands import Context, Cog, Bot
+from discord import app_commands, Interaction, Message
 
 IS_ENABLED = True
 
@@ -44,6 +44,15 @@ class CommandsCog(commands.Cog):
             await interaction.channel.send(comm[0])
         await interaction.response.defer()
 
+    # @Bot.listen()
+    # async def on_message(message: Message):
+    #     if message.author == self.bot.user:
+    #         return
+    #     if message.content.startswith('!'):
+    #         outputs = await self.bot.db_manager.get_output(message.content)
+    #         for output in outputs:
+    #             if message.content == output[0]:
+    #                 await message.channel.send(output[1])
 
 
 async def setup(bot):
