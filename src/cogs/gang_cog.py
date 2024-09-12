@@ -64,20 +64,22 @@ class GangCog(commands.Cog):
         if (gang_channels.index(gang_name.lower()) > 0):
             put_after_channel_str = gang_channels[gang_channels.index(gang_name.lower())-1]
             for channel in interaction.guild.channels:
-                if channel.name == put_after_channel_str:   
-                    channel.after(channel_created.id)
+                if channel.name == put_after_channel_str:
+                    await channel_created.move(after=channel)
             
         
         sent = await interaction.response.send_message(gang_name + ' Gang has been made! Type "/join ' + gang_name + ' Gang" to join', ephemeral=True)
 
     @app_commands.command(name = 'join', description='Join a gang!') # Join gang
     async def join_gang(self, interaction: Interaction, add_role: str):
+        role_names = list(map(lambda x : x.name.lower().strip(), interaction.guild.roles))
+        if (add_role.lower().strip() not in role_names):
+            await interaction.response.send_message('Gang does not exist!')
+            return
         movie_night_addendum = ''
         for role in interaction.guild.roles:
             if role.name.lower() in add_role.strip().lower():
-                if (role.name.lower() not in interaction.guild.roles):
-                    await interaction.response.send_message('Gang does not exist!')
-                elif  ('gang' not in role.name.lower()) or role.name == 'Server Admin' or role.name == 'Donor' or role.name == 'Bots' or role.name == 'Robin Otto' or role.name == "Groovy" or role.name == 'The Server Brain Cell' or role.name == 'Server Genius' or role.name == 'Pingcord':
+                if  ('gang' not in role.name.lower()) or role.name == 'Server Admin' or role.name == 'Donor' or role.name == 'Bots' or role.name == 'Robin Otto' or role.name == "Groovy" or role.name == 'The Server Brain Cell' or role.name == 'Server Genius' or role.name == 'Pingcord':
                     await interaction.response.send_message('You cannot join this role: ' + role.name, ephemeral=True) # Dont let people join not gang roles
                 else:
                     await interaction.user.add_roles(role)
@@ -87,10 +89,11 @@ class GangCog(commands.Cog):
 
     @app_commands.command(name = 'leave', description='Leave a gang') # Remove from gang
     async def leave_gang(self, interaction: Interaction, remove_role: str):
+        role_names = list(map(lambda x : x.name.lower().strip(), interaction.guild.roles))
+        if (remove_role.lower().strip() not in role_names):
+            await interaction.response.send_message('Gang does not exist!')
         for role in interaction.guild.roles:
             if role.name.lower() in remove_role.strip().lower():
-                if (role.name.lower() not in interaction.guild.roles):
-                    await interaction.response.send_message('Gang does not exist!')
                 if ('gang' not in role.name.lower()) or role.name == 'Server Admin' or role.name == 'Donor' or role.name == 'Bots' or role.name == 'Robin Otto' or role.name == "Groovy":
                     await interaction.response.send_message('You cannot leave this role: ' + role.name, ephemeral=True) # Dont let people leave not gang roles
                 else:
@@ -121,7 +124,7 @@ class GangCog(commands.Cog):
                     if (role.id != 636466520591040512 and role.id != 838502048483377172 and role.id != 885402414000242688 and role.id != 889560965245456394 and role.id != 971100520007761971): # Filter out dumb gangs like gang gang, pop 69 in 2010 gang, etc
                         gang_roles[role.name.lower()] = role.id
 
-        sorted_roles = dict(sorted(gang_roles.items))
+        sorted_roles = dict(sorted(gang_roles.items()))
         for sorted_role_name, sorted_role_id in sorted_roles.items():
             await interaction.channel.send('# ' + interaction.guild.get_role(sorted_role_id).name, view=RoleManager(role_id=sorted_role_id))
 
