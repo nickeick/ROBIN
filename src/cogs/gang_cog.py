@@ -7,13 +7,14 @@ IS_ENABLED = True
 class GangCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+        self.server_admin_id = 578065628691431435
 
     async def cog_check(self, ctx: Context):
         if (not IS_ENABLED):
             await ctx.send('This Cog is disabled')
         return IS_ENABLED
     
-    @app_commands.checks.has_role(578065628691431435) # If has admin role
+    @app_commands.checks.has_role(self.server_admin_id) # If has admin role
     @app_commands.command(name = 'addgang', description='Dont add gang to the end') 
     async def add_gang(self, interaction: Interaction, add_channel: str):
         channels = [] 

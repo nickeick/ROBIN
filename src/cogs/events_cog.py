@@ -31,8 +31,7 @@ class EventsCog(commands.Cog):
         if message.content.startswith('!'):
             outputs = await self.bot.db_manager.get_output(message.content)
             for output in outputs:
-                if message.content == output[0]:
-                    await message.channel.send(output[1])
+                await message.channel.send(output[0])
 
 async def setup(bot):
     await bot.add_cog(EventsCog(bot))
