@@ -1,6 +1,6 @@
 from discord.ext import commands
 from discord.ext.commands import Context
-from discord import app_commands, Interaction, PermissionOverwrite
+from discord import app_commands, Interaction, PermissionOverwrite, Error
 import discord
 
 IS_ENABLED = True
@@ -56,7 +56,7 @@ class GangCog(commands.Cog):
         new_role = await interaction.guild.create_role(name=gang_name + " Gang") # Create New Role
         overwrites = {interaction.guild.default_role: PermissionOverwrite(read_messages=False),
                             new_role: PermissionOverwrite(read_messages=True)}
-        channel_created = await interaction.guild.create_text_channel(gang_name + '-gang', overwrites=overwrites, category=activities) # Create New Text Channel
+        channel_created = await interaction.guild.create_text_channel(gang_name + '-gang', overwrites=overwrites, category=activities, position=0) # Create New Text Channel
 
         gang_channels.append(gang_name.lower()) # Get the alphabetic postion the channel should be put at
         gang_channels.sort()
@@ -66,15 +66,22 @@ class GangCog(commands.Cog):
             for channel in interaction.guild.channels:
                 if channel.name == put_after_channel_str:
                     await channel_created.move(after=channel)
-            
-        
+                    
         sent = await interaction.response.send_message(gang_name + ' Gang has been made! Type "/join ' + gang_name + ' Gang" to join', ephemeral=True)
+
+    @add_gang.error # Error handler for adding someone to a gang
+    async def add_gang_error(self, error: Error):
+        if isinstance(error, commands.MissingRole):
+            await self.send('No permission.') # Permissions error
+        else:
+            await self.send('An error has occured.') # Every other error
+
 
     @app_commands.command(name = 'join', description='Join a gang!') # Join gang
     async def join_gang(self, interaction: Interaction, add_role: str):
         role_names = list(map(lambda x : x.name.lower().strip(), interaction.guild.roles))
         if (add_role.lower().strip() not in role_names):
-            await interaction.response.send_message('Gang does not exist!')
+            await interaction.response.send_message('Gang does not exist!', ephemeral=True)
             return
         movie_night_addendum = ''
         for role in interaction.guild.roles:
@@ -91,7 +98,7 @@ class GangCog(commands.Cog):
     async def leave_gang(self, interaction: Interaction, remove_role: str):
         role_names = list(map(lambda x : x.name.lower().strip(), interaction.guild.roles))
         if (remove_role.lower().strip() not in role_names):
-            await interaction.response.send_message('Gang does not exist!')
+            await interaction.response.send_message('Gang does not exist!', ephemeral=True)
         for role in interaction.guild.roles:
             if role.name.lower() in remove_role.strip().lower():
                 if ('gang' not in role.name.lower()) or role.name == 'Server Admin' or role.name == 'Donor' or role.name == 'Bots' or role.name == 'Robin Otto' or role.name == "Groovy":
@@ -108,14 +115,14 @@ class GangCog(commands.Cog):
             return
         
         # THIS DELETES THE HISTORY OF THE CHANNEL
-        # if(interaction.channel_id == self.join_roles_here):
-        #     async for message in channel.history(limit=none):
-        #         try:
-        #             await message.delete()
-        #         except discord.Forbidden:
-        #             interaction.response.send_message('Could not delete message - No Permissions')
-        #         except discord.HTTPException as e:
-        #             interaction.response.send_message('Could not delete message - {e}')
+        if(interaction.channel_id == self.join_roles_here):
+            async for message in interaction.guild.get_channel(self.join_roles_here).history(limit=None):
+                try:
+                    await message.delete()
+                except discord.Forbidden:
+                    interaction.response.send_message('Could not delete message - No Permissions')
+                except discord.HTTPException as e:
+                    interaction.response.send_message('Could not delete message - {e}')
 
         gang_roles = {}
         for role in interaction.guild.roles: # Get a list of every gang role
@@ -129,6 +136,13 @@ class GangCog(commands.Cog):
             await interaction.channel.send('# ' + interaction.guild.get_role(sorted_role_id).name, view=RoleManager(role_id=sorted_role_id))
 
         await interaction.response.send_message('Join Roles Here created!', ephemeral=True)
+
+        @generate_gang_list.error # Error handler for adding someone to a gang
+        async def generate_gang_list(self, error: Error):
+            if isinstance(error, commands.MissingRole):
+                await self.send('No permission.') # Permissions error
+            else:
+                await self.send('An error has occured.') # Every other error
 
 
 async def setup(bot):
