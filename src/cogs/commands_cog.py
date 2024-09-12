@@ -7,7 +7,6 @@ IS_ENABLED = True
 class CommandsCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.server_admin_id = 578065628691431435
 
     async def cog_check(self, ctx: Context):
         if (not IS_ENABLED):
