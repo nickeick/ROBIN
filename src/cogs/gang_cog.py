@@ -1,6 +1,6 @@
 from discord.ext import commands
 from discord.ext.commands import Context
-from discord import app_commands, Interaction, PermissionOverwrite, Channel, Guild
+from discord import app_commands, Interaction, PermissionOverwrite
 import discord
 
 IS_ENABLED = True
@@ -11,22 +11,20 @@ class RoleManager(discord.ui.View):
             self.role_id = role_id
 
         @discord.ui.button(label="Join", style=discord.ButtonStyle.green)
-        async def join_button_callback(self, interaction: Interaction, guild: Guild, button):
-            if guild.get_role(self.role_id) in interaction.user.roles:
-                await interaction.response.send_message('You are already in ' + guild.get_role(self.role_id).name, ephemeral=True)
+        async def join_button_callback(self, interaction: Interaction, button):
+            if interaction.guild.get_role(self.role_id) in interaction.user.roles:
+                await interaction.response.send_message('You are already in ' + interaction.guild.get_role(self.role_id).name, ephemeral=True)
             else:
-                interaction.user.add_roles(guild.get_role(self.role_id))
-                await interaction.response.send_message('Added to ' + guild.get_role(self.role_id).name, ephemeral=True)
-            await interaction.response.defer()
+                await interaction.user.add_roles(interaction.guild.get_role(self.role_id))
+                await interaction.response.send_message('Added to ' + interaction.guild.get_role(self.role_id).name, ephemeral=True)
 
         @discord.ui.button(label="Leave", style=discord.ButtonStyle.red)
-        async def leave_button_callback(self, interaction: Interaction, guild: Guild, button):
-            if guild.get_role(self.role_id) in interaction.user.roles:
-                interaction.user.remove_roles(guild.get_role(self.role_id))
-                await interaction.response.send_message('Left ' + guild.get_role(self.role_id).name, ephemeral=True)
+        async def leave_button_callback(self, interaction: Interaction, button):
+            if interaction.guild.get_role(self.role_id) in interaction.user.roles:
+                await interaction.user.remove_roles(interaction.guild.get_role(self.role_id))
+                await interaction.response.send_message('Left ' + interaction.guild.get_role(self.role_id).name, ephemeral=True)
             else:
-                await interaction.response.send_message('You are not in ' + guild.get_role(self.role_id).name, ephemeral=True)
-            await interaction.response.defer()
+                await interaction.response.send_message('You are not in ' + interaction.guild.get_role(self.role_id).name, ephemeral=True)
     
 
 class GangCog(commands.Cog):
@@ -42,32 +40,30 @@ class GangCog(commands.Cog):
     
     @app_commands.checks.has_role(578065628691431435) # If has admin role
     @app_commands.command(name = 'makegang', description='Dont add gang to the end') 
-    async def add_gang(self, interaction: Interaction, guild: Guild, add_channel: str):
+    async def add_gang(self, interaction: Interaction, gang_name: str):
         gang_channels = [] 
-        for channel in guild.channels: # Get a list of every gang
+        for channel in interaction.guild.channels: # Get a list of every gang
             if len(channel.name) > 5:
-                if channel.name[-6:-1].lower == '-gang':
+                if channel.name[-5:].lower() == '-gang':
                     gang_channels.append(channel.name)
         
         for channel in gang_channels: # Check if gang already exists, exit command if so
-            if channel.lower == add_channel.lower + '-gang':
+            if channel.lower == gang_name.lower() + '-gang':
                 sent = await interaction.response.send_message('Gang already exists!', ephemeral=True)
                 return
             
-        gang_channels.append(add_channel) # Get the alphabetic postion the channel should be put at
+        gang_channels.append(gang_name.lower()) # Get the alphabetic postion the channel should be put at
         gang_channels.sort()
-        n = 0
-        for channel in gang_channels:
-            if channel == add_channel:
-                n = gang_channels.index(channel)
-                break
+        print(gang_channels)
+        n = gang_channels.index(gang_name.lower())
+        print(n)
 
         activities = interaction.guild.get_channel(579796688420732949) # Gang Activities category
-        new_role = await interaction.guild.create_role(name=add_channel + " Gang") # Create New Role
+        new_role = await interaction.guild.create_role(name=gang_name + " Gang") # Create New Role
         overwrites = {interaction.guild.default_role: PermissionOverwrite(read_messages=False),
                             new_role: PermissionOverwrite(read_messages=True)}
-        await interaction.guild.create_text_channel(add_channel + '-gang', overwrites=overwrites, category=activities, position=n) # Create New Text Channel
-        sent = await interaction.response.send_message(add_channel + ' Gang has been made! Type "/join ' + add_channel + ' Gang" to join', ephemeral=True)
+        await interaction.guild.create_text_channel(gang_name + '-gang', overwrites=overwrites, category=activities, position=n) # Create New Text Channel
+        sent = await interaction.response.send_message(gang_name + ' Gang has been made! Type "/join ' + gang_name + ' Gang" to join', ephemeral=True)
 
     @app_commands.command(name = 'join', description='Join a gang!') # Join gang
     async def join_gang(self, interaction: Interaction, add_role: str):
@@ -92,10 +88,10 @@ class GangCog(commands.Cog):
                     await interaction.user.remove_roles(role)
                     await interaction.response.send_message('Removed ' + interaction.user.display_name + ' from ' + role.name, ephemeral=True)
 
-    @app_commands.has_role(578065628691431435) #If has admin role
+    @app_commands.checks.has_role(578065628691431435) #If has admin role
     @app_commands.command(name='generategangs')
-    async def generate_gang_list(self, interaction: Interaction, guild: Guild, channel: Channel, name='generateganglist'): #Gang List Maker ONLY TEST IN SPECIFIC CHANNEL IT WILL DELETE STUFF
-        if interaction.channel_id != self.join_roles_here and interaction.channel_id != self.bot_test: 
+    async def generate_gang_list(self, interaction: Interaction): #Gang List Maker ONLY TEST IN SPECIFIC CHANNEL IT WILL DELETE STUFF
+        if interaction.channel_id != self.join_roles_here and interaction.channel_id != self.bot_test:
             await interaction.response.send_message('This command can only be used in #join-roles-here!')
             return
         
@@ -110,16 +106,16 @@ class GangCog(commands.Cog):
         #             interaction.response.send_message('Could not delete message - {e}')
 
         gang_roles = []
-        for role in guild.roles: # Get a list of every gang role
+        for role in interaction.guild.roles: # Get a list of every gang role
             if len(role.name) > 4:
-                if role.name[-5:-1].lower == 'gang':
+                if role.name[-4:].lower().strip() == 'gang':
                     if (role.id != 636466520591040512 and role.id != 838502048483377172): # Filter out gang gang and pop 69 in 2010 gang
                         gang_roles.append(role.id)
 
         for role in gang_roles:
-            await interaction.channel.send(guild.get_role(role).name, view=RoleManager(role_id=role))
+            await interaction.channel.send(interaction.guild.get_role(role).name, view=RoleManager(role_id=role))
 
-        await interaction.response.send_messages('Join Roles Here created!', ephemeral=True)
+        await interaction.response.send_message('Join Roles Here created!', ephemeral=True)
 
 
 async def setup(bot):
