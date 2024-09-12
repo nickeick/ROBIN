@@ -92,7 +92,7 @@ class BrainCellCog(commands.Cog):
             to_send += '|   ' + str(item[1]) + '\n'
         return to_send
 
-    @app_commands.command()
+    @app_commands.command(description='See who has the braincell!')
     async def braincell(self, interaction: Interaction):
         to_send = ''
         for member in interaction.guild.members:
@@ -100,7 +100,7 @@ class BrainCellCog(commands.Cog):
                 to_send += member.display_name + ' is hogging the server brain cell\n'
         await interaction.response.send_message(to_send)
 
-    @app_commands.command()
+    @app_commands.command(description='Use the braincell to think!')
     async def think(self, interaction: Interaction):
         if interaction.guild.get_role(self.braincell_role_id) in interaction.user.roles:
             if interaction.user.id not in self.think_locked:
@@ -116,10 +116,14 @@ class BrainCellCog(commands.Cog):
         else:
             await interaction.response.send_message("You don't have the brain cell <:bonk:772161497031507968>")
 
-    @app_commands.command()
+    @app_commands.command(description='View the cents leaderboard!')
     async def leaderboard(self, interaction: Interaction):
         to_send = await self.printLeaderboard(interaction, 1, 10)
         sent = await interaction.response.send_message(to_send, view=LeaderboardView())
+
+    @app_commands.command(description='See how many times you\'ve /think\'ed!')
+    async def cents(self, interaction: Interaction):
+        await interaction.response.send_message('This is not a real command you just got pranked :tracerdab:')
 
     @tasks.loop(minutes = 20)
     async def braincell_swap(self):
