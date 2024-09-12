@@ -32,6 +32,16 @@ class EventsCog(commands.Cog):
             outputs = await self.bot.db_manager.get_output(message.content)
             for output in outputs:
                 await message.channel.send(output[0])
+        if ' im ' in message.content.lower:
+            for x in range(len(message.content)):
+                if 'im' in message.content[x:].lower:
+                    what_they_are = message.content[message.content.lower.find('im', x) + 3:]
+                    await message.channel.send('Hi ' + what_they_are + ', I\'m Robin')
+        if ' i\'m ' in message.content.lower:
+            for x in range(len(message.content)):
+                if 'i\'m' in message.content[x:].lower:
+                    what_they_are = message.content[message.content.lower.find('i\'m', x) + 4:]
+                    await message.channel.send('Hi ' + what_they_are + ', I\'m Robin')
 
 async def setup(bot):
     await bot.add_cog(EventsCog(bot))
