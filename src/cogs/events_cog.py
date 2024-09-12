@@ -1,6 +1,6 @@
 from discord.ext import commands
 from discord.ext.commands import Context
-from discord import app_commands, Member, RawReactionActionEvent
+from discord import app_commands, Member, RawReactionActionEvent, Message
 
 IS_ENABLED = True
 
@@ -23,6 +23,16 @@ class EventsCog(commands.Cog):
     async def on_raw_reaction_add(self, payload: RawReactionActionEvent):
         if str(payload.emoji) == "☑️" and payload.message_id == 759611108541071380:
             await payload.member.remove_roles(payload.member.guild.get_role(self.initiate_role_id))
+
+    @commands.Cog.listener()
+    async def on_message(self, message: Message):
+        if message.author == self.bot.user:
+            return
+        if message.content.startswith('!'):
+            outputs = await self.bot.db_manager.get_output(message.content)
+            for output in outputs:
+                if message.content == output[0]:
+                    await message.channel.send(output[1])
 
 async def setup(bot):
     await bot.add_cog(EventsCog(bot))

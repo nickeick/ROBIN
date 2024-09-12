@@ -44,16 +44,6 @@ class CommandsCog(commands.Cog):
             await interaction.channel.send(comm[0])
         await interaction.response.defer()
 
-    # @Bot.listen()
-    # async def on_message(message: Message):
-    #     if message.author == self.bot.user:
-    #         return
-    #     if message.content.startswith('!'):
-    #         outputs = await self.bot.db_manager.get_output(message.content)
-    #         for output in outputs:
-    #             if message.content == output[0]:
-    #                 await message.channel.send(output[1])
-
 
 async def setup(bot):
     await bot.add_cog(CommandsCog(bot))
