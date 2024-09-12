@@ -51,18 +51,23 @@ class GangCog(commands.Cog):
             if channel.lower == gang_name.lower() + '-gang':
                 sent = await interaction.response.send_message('Gang already exists!', ephemeral=True)
                 return
-            
-        gang_channels.append(gang_name.lower()) # Get the alphabetic postion the channel should be put at
-        gang_channels.sort()
-        print(gang_channels)
-        n = gang_channels.index(gang_name.lower())
-        print(n)
 
         activities = interaction.guild.get_channel(579796688420732949) # Gang Activities category
         new_role = await interaction.guild.create_role(name=gang_name + " Gang") # Create New Role
         overwrites = {interaction.guild.default_role: PermissionOverwrite(read_messages=False),
                             new_role: PermissionOverwrite(read_messages=True)}
-        await interaction.guild.create_text_channel(gang_name + '-gang', overwrites=overwrites, category=activities, position=n) # Create New Text Channel
+        channel_created = await interaction.guild.create_text_channel(gang_name + '-gang', overwrites=overwrites, category=activities) # Create New Text Channel
+
+        gang_channels.append(gang_name.lower()) # Get the alphabetic postion the channel should be put at
+        gang_channels.sort()
+        put_after_channel_str = ''
+        if (gang_channels.index(gang_name.lower()) > 0):
+            put_after_channel_str = gang_channels[gang_channels.index(gang_name.lower())-1]
+            for channel in interaction.guild.channels:
+                if channel.name == put_after_channel_str:   
+                    channel.after(channel_created.id)
+            
+        
         sent = await interaction.response.send_message(gang_name + ' Gang has been made! Type "/join ' + gang_name + ' Gang" to join', ephemeral=True)
 
     @app_commands.command(name = 'join', description='Join a gang!') # Join gang
@@ -105,15 +110,16 @@ class GangCog(commands.Cog):
         #         except discord.HTTPException as e:
         #             interaction.response.send_message('Could not delete message - {e}')
 
-        gang_roles = []
+        gang_roles = {}
         for role in interaction.guild.roles: # Get a list of every gang role
             if len(role.name) > 4:
                 if role.name[-4:].lower().strip() == 'gang':
                     if (role.id != 636466520591040512 and role.id != 838502048483377172): # Filter out gang gang and pop 69 in 2010 gang
-                        gang_roles.append(role.id)
+                        gang_roles[role.name.lower()] = role.id
 
-        for role in gang_roles:
-            await interaction.channel.send(interaction.guild.get_role(role).name, view=RoleManager(role_id=role))
+        sorted_roles = dict(sorted(gang_roles.items))
+        for role in sorted_roles:
+            await interaction.channel.send('# ' + interaction.guild.get_role(role).name, view=RoleManager(role_id=role))
 
         await interaction.response.send_message('Join Roles Here created!', ephemeral=True)
 
