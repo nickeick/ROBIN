@@ -77,15 +77,15 @@ class GangCog(commands.Cog):
             await interaction.response.send_message('An error has occured' + error, ephemeral=True) # Every other error
 
 
-    @app_commands.command(name = 'join', description='Join a gang!') # Join gang
-    async def join_gang(self, interaction: Interaction, add_role: str):
+    @app_commands.command(name = 'join', description='Join a gang') # Join gang
+    async def join_gang(self, interaction: Interaction, gang_name: str):
         role_names = list(map(lambda x : x.name.lower().strip(), interaction.guild.roles))
-        if (add_role.lower().strip() not in role_names):
+        if (gang_name.lower().strip() not in role_names):
             await interaction.response.send_message('Gang does not exist!', ephemeral=True)
             return
         movie_night_addendum = ''
         for role in interaction.guild.roles:
-            if role.name.lower() in add_role.strip().lower():
+            if role.name.lower() in gang_name.strip().lower():
                 if  ('gang' not in role.name.lower()) or role.name == 'Server Admin' or role.name == 'Donor' or role.name == 'Bots' or role.name == 'Robin Otto' or role.name == "Groovy" or role.name == 'The Server Brain Cell' or role.name == 'Server Genius' or role.name == 'Pingcord':
                     await interaction.response.send_message('You cannot join this role: ' + role.name, ephemeral=True) # Dont let people join not gang roles
                 else:
@@ -94,18 +94,40 @@ class GangCog(commands.Cog):
                         movie_night_addendum = 'This is an NSFW gang \n' # This still might not work
                     await interaction.response.send_message(movie_night_addendum + 'Added ' + interaction.user.display_name + ' to ' + role.name, ephemeral=True)
 
+    @join_gang.autocomplete('gang_name') # Attempt autocomplete
+    async def join_gang_autocomplete(self, interaction: Interaction, current: str):
+        gang_roles = []
+        for role in interaction.guild.roles: # Get a list of every gang role
+            if len(role.name) > 4:
+                if role.name[-4:].lower().strip() == 'gang':
+                    gang_roles.append(role.name)
+        
+            suggestions = [gang_name for gang_name in gang_roles if current.lower() in gang_name.lower()]
+            return [app_commands.Choice(name=gang_name, value=gang_name) for gang_name in suggestions]
+
     @app_commands.command(name = 'leave', description='Leave a gang') # Remove from gang
-    async def leave_gang(self, interaction: Interaction, remove_role: str):
+    async def leave_gang(self, interaction: Interaction, gang_name: str):
         role_names = list(map(lambda x : x.name.lower().strip(), interaction.guild.roles))
-        if (remove_role.lower().strip() not in role_names):
+        if (gang_name.lower().strip() not in role_names):
             await interaction.response.send_message('Gang does not exist!', ephemeral=True)
         for role in interaction.guild.roles:
-            if role.name.lower() in remove_role.strip().lower():
+            if role.name.lower() in gang_name.strip().lower():
                 if ('gang' not in role.name.lower()) or role.name == 'Server Admin' or role.name == 'Donor' or role.name == 'Bots' or role.name == 'Robin Otto' or role.name == "Groovy":
                     await interaction.response.send_message('You cannot leave this role: ' + role.name, ephemeral=True) # Dont let people leave not gang roles
                 else:
                     await interaction.user.remove_roles(role)
                     await interaction.response.send_message('Removed ' + interaction.user.display_name + ' from ' + role.name, ephemeral=True)
+
+    @leave_gang.autocomplete('gang_name') # Attempt autocomplete
+    async def leave_gang_autocomplete(self, interaction: Interaction, current: str):
+        gang_roles = []
+        for role in interaction.guild.roles: # Get a list of every gang role
+            if len(role.name) > 4:
+                if role.name[-4:].lower().strip() == 'gang':
+                    gang_roles.append(role.name)
+        
+            suggestions = [gang_name for gang_name in gang_roles if current.lower() in gang_name.lower()]
+            return [app_commands.Choice(name=gang_name, value=gang_name) for gang_name in suggestions]
 
     @app_commands.checks.has_role(578065628691431435) #If has admin role
     @app_commands.command(name='generategangs')
@@ -133,7 +155,7 @@ class GangCog(commands.Cog):
 
         sorted_roles = dict(sorted(gang_roles.items()))
         for sorted_role_name, sorted_role_id in sorted_roles.items():
-            await interaction.channel.send('# ' + interaction.guild.get_role(sorted_role_id).name, view=RoleManager(role_id=sorted_role_id))
+            await interaction.channel.send('# ' + interaction.guild.get_role(sorted_role_id).name, view=RoleManager(timeout=None, role_id=sorted_role_id))
 
         await interaction.response.send_message('Join Roles Here created!', ephemeral=True)
 

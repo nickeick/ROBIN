@@ -123,7 +123,7 @@ class BrainCellCog(commands.Cog):
 
     @app_commands.command(description='See how many times you\'ve /think\'ed!')
     async def cents(self, interaction: Interaction):
-        await interaction.response.send_message('This is not a real command you just got pranked :tracerdab:')
+        await interaction.response.send_message('This is not a real command you just got pranked :tracerdab:633510729915564050')
 
     @tasks.loop(minutes = 20)
     async def braincell_swap(self):
