@@ -1,6 +1,6 @@
 from discord.ext import commands
 from discord.ext.commands import Context
-from discord import app_commands, Interaction, PermissionOverwrite, Error
+from discord import app_commands, Interaction, PermissionOverwrite
 import discord
 
 IS_ENABLED = True
@@ -69,12 +69,12 @@ class GangCog(commands.Cog):
                     
         sent = await interaction.response.send_message(gang_name + ' Gang has been made! Type "/join ' + gang_name + ' Gang" to join', ephemeral=True)
 
-    @add_gang.error # Error handler for adding someone to a gang
-    async def add_gang_error(self, error: Error):
-        if isinstance(error, commands.MissingRole):
-            await self.send('No permission.') # Permissions error
+    @add_gang.error
+    async def add_gang_error(self, interaction: Interaction, error: app_commands.AppCommandError):
+        if isinstance(error, app_commands.MissingRole):
+            await interaction.response.send_message('You do not have permission to use this command!', ephemeral=True) # Permissions error
         else:
-            await self.send('An error has occured.') # Every other error
+            await interaction.response.send_message('An error has occured' + error, ephemeral=True) # Every other error
 
 
     @app_commands.command(name = 'join', description='Join a gang!') # Join gang
@@ -138,11 +138,11 @@ class GangCog(commands.Cog):
         await interaction.response.send_message('Join Roles Here created!', ephemeral=True)
 
         @generate_gang_list.error # Error handler for adding someone to a gang
-        async def generate_gang_list(self, error: Error):
-            if isinstance(error, commands.MissingRole):
-                await self.send('No permission.') # Permissions error
+        async def generate_gang_list(self, interaction: Interaction, error: app_commands.AppCommandError):
+            if isinstance(error, app_commands.MissingRole):
+                await interaction.response.send_message('You do not have permission to use this command!', ephemeral=True) # Permissions error
             else:
-                await self.send('An error has occured.') # Every other error
+                await interaction.response.send_message('An error has occured', ephemeral=True) # Every other error
 
 
 async def setup(bot):

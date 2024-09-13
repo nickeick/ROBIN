@@ -28,9 +28,9 @@ class CommandsCog(commands.Cog):
     @app_commands.command()
     @app_commands.checks.has_role(578065628691431435)
     async def editcom(self, interaction, command_name: str, current_output: str, new_output: str):
-        exists = await self.bot.db_manager.does_command_exist(command_name, current_output)
+        exists = await self.bot.db_manager.does_output_exist(command_name, current_output)
         if exists:
-            await self.bot.db_manager.delete_command_output(command, current_output)
+            await self.bot.db_manager.delete_command_output(command_name, current_output)
             await self.bot.db_manager.add_command(command_name, new_output, interaction.user.name)
             await interaction.response.send_message(command_name + " has been updated")
         else:

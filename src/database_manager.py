@@ -62,8 +62,11 @@ class DatabaseManager:
     async def get_all_points(self) -> list:
         points = await self.execute_with_retries("SELECT * FROM braincell_points ORDER BY points DESC", (), fetchall=True)
         return points
+
+    async def add_counter(self, counter):
+        await self.execute_with_retries("INSERT INTO counters VALUES (?,?)", (counter, 0))
     
-    async def add_counter(self, counter, number):
+    async def add_one_to_counter(self, counter, number):
         count = await self.execute_with_retries("SELECT count FROM counters WHERE counter=?", (counter,))
         new_count = count[0] + 1
         await self.execute_with_retries("REPLACE INTO counters (counter, count) VALUES (?, ?)", (counter, new_count))
@@ -78,8 +81,16 @@ class DatabaseManager:
     async def delete_command_output(self, command, output):
         await self.execute_with_retries("DELETE from commands WHERE command_name=? AND output=?", (command, output))
 
-    async def does_command_exist(self, command, output) -> bool:
+    async def does_command_exist(self, command) -> bool:
+        comm = await self.execute_with_retries("SELECT * from commands WHERE command_name=?", (command,))
+        return comm != None
+
+    async def does_output_exist(self, command):
         comm = await self.execute_with_retries("SELECT * from commands WHERE command_name=? AND output=?", (command, output))
+        return comm != None
+
+    async def does_counter_exist(self, command) -> bool:
+        comm = await self.execute_with_retries("SELECT * from counters WHERE counter=?", (command,))
         return comm != None
 
     async def get_all_commands(self) -> list:

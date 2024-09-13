@@ -8,6 +8,7 @@ class EventsCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.initiate_role_id = 759600936435449896
+        self.dojo_id = 578065102310342677
 
     async def cog_check(self, ctx: Context):
         if (not IS_ENABLED):
@@ -16,7 +17,8 @@ class EventsCog(commands.Cog):
     
     @commands.Cog.listener()
     async def on_member_join(self, member: Member):
-        await member.add_roles(member.guild.get_role(self.initiate_role_id)) # Assign initiate role on user join
+        if message.guild.id == self.dojo_id:
+            await member.add_roles(member.guild.get_role(self.initiate_role_id)) # Assign initiate role on user join
 
 
     @commands.Cog.listener()
@@ -32,16 +34,11 @@ class EventsCog(commands.Cog):
             outputs = await self.bot.db_manager.get_output(message.content)
             for output in outputs:
                 await message.channel.send(output[0])
-        if ' im ' in message.content.lower:
-            for x in range(len(message.content)):
-                if 'im' in message.content[x:].lower:
-                    what_they_are = message.content[message.content.lower.find('im', x) + 3:]
-                    await message.channel.send('Hi ' + what_they_are + ', I\'m Robin')
-        if ' i\'m ' in message.content.lower:
-            for x in range(len(message.content)):
-                if 'i\'m' in message.content[x:].lower:
-                    what_they_are = message.content[message.content.lower.find('i\'m', x) + 4:]
-                    await message.channel.send('Hi ' + what_they_are + ', I\'m Robin')
+        if message.content.startswith("I'm "):
+            if message.guild.id == self.dojo_id:
+                message_content = message.content.replace("I'm ", '').strip()
+                await message.channel.send("Hi " + message_content + ", I'm Robin")
+
 
 async def setup(bot):
     await bot.add_cog(EventsCog(bot))
