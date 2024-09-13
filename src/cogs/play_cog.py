@@ -10,14 +10,14 @@ class PlayView(discord.ui.View): # Create a class called PlayView that subclasse
     @discord.ui.button(label="Yes", style=discord.ButtonStyle.green) # Create a button with the label "Yes" with color green
     async def yes_button_callback(self, interaction: Interaction, button):
         await interaction.user.add_roles(interaction.guild.get_role(757388821540372561)) # Add user to the "Yes" role
-        if interaction.user.name not in interaction.message.content: # If user is listed as a "yes" and presses "No," remove from "yes"
+        if interaction.user.mention not in interaction.message.content: # If user is listed as a "yes" and presses "No," remove from "yes"
             await interaction.message.edit(content=interaction.message.content + '\n*' + interaction.user.mention + '*')
         await interaction.response.defer()
 
     @discord.ui.button(label="No", style=discord.ButtonStyle.red) # Create a button with the label "No" with color red
     async def no_button_callback(self, interaction: Interaction, button):
         await interaction.user.add_roles(interaction.guild.get_role(757389176449531954)) # Add user to the "No" role
-        if interaction.user.name in interaction.message.content: # If user is listed as a "yes" and presses "No," remove from "yes"
+        if interaction.user.mention in interaction.message.content: # If user is listed as a "yes" and presses "No," remove from "yes"
             await interaction.message.edit(content=interaction.message.content.replace('\n*' + interaction.user.mention + '*', ''))
         await interaction.response.defer()
 
@@ -47,9 +47,9 @@ class PlayCog(commands.Cog):
                 if role.name.lower() == interaction.channel.name.replace('-', ' '):
                     mention = role.mention
         if mention == "":
-            sent = await interaction.response.send_message('Dojo, is anyone interested in playing ' + time + "\n\nYesses:\n*" + interaction.user.mention + '*', view=PlayView())
+            sent = await interaction.response.send_message('Dojo, is anyone interested in playing ' + time + "\n\nYesses:\n*" + interaction.user.mention + '*', view=PlayView(timeout=None))
         else:
-            sent = await interaction.response.send_message(mention + 'is anyone interested in playing ' + time + "\n\nYesses:\n*" + interaction.user.name + '*', view=PlayView())
+            sent = await interaction.response.send_message(mention + 'is anyone interested in playing ' + time + "\n\nYesses:\n*" + interaction.user.name + '*', view=PlayView(timeout=None))
 
 
 async def setup(bot):
