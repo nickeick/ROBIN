@@ -1,10 +1,7 @@
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord import app_commands, Member, RawReactionActionEvent, Message
-import sys 
-import os
-sys.path.append(os.path.dirname(__file__))
-from gang_cog import RoleManager
+
 
 IS_ENABLED = True
 
@@ -42,10 +39,6 @@ class EventsCog(commands.Cog):
             if message.guild.id == self.dojo_id:
                 message_content = message.content.replace("I'm ", '').strip()
                 await message.channel.send("Hi " + message_content + ", I'm Robin")
-
-    @commands.Cog.listener()
-    async def on_ready(self):
-        self.add_view(RoleManager())
 
 
 async def setup(bot):

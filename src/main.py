@@ -16,6 +16,7 @@ from aiohttp import ClientSession
 
 from database_manager import DatabaseManager
 
+
 class CustomBot(commands.Bot):
     def __init__(
         self,
@@ -40,6 +41,7 @@ class CustomBot(commands.Bot):
             if filename.endswith('.py'):
                 await self.load_extension(f'cogs.{filename[:-3]}')
                 print(f'Loaded: cogs.{filename[:-3]}')
+
 
         # In overriding setup hook,
         # we can do things that require a bot prior to starting to process events from the websocket.

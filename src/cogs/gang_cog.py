@@ -5,12 +5,13 @@ import discord
 
 IS_ENABLED = True
 
+# I am leaving the old view for posterity's sake
 class RoleManager(discord.ui.View):
         def __init__(self, role_id):
             super().__init__(timeout=None)
             self.role_id = role_id
 
-        @discord.ui.button(label="Join", style=discord.ButtonStyle.green)
+        @discord.ui.button(label="Join", style=discord.ButtonStyle.green, custom_id='role_manager:green')
         async def join_button_callback(self, interaction: Interaction, button):
             if interaction.guild.get_role(self.role_id) in interaction.user.roles:
                 await interaction.response.send_message('You are already in ' + interaction.guild.get_role(self.role_id).name, ephemeral=True)
@@ -18,20 +19,61 @@ class RoleManager(discord.ui.View):
                 await interaction.user.add_roles(interaction.guild.get_role(self.role_id))
                 await interaction.response.send_message('Added to ' + interaction.guild.get_role(self.role_id).name, ephemeral=True)
 
-        @discord.ui.button(label="Leave", style=discord.ButtonStyle.red)
+        @discord.ui.button(label="Leave", style=discord.ButtonStyle.red, custom_id='role_manager:red')
         async def leave_button_callback(self, interaction: Interaction, button):
             if interaction.guild.get_role(self.role_id) in interaction.user.roles:
                 await interaction.user.remove_roles(interaction.guild.get_role(self.role_id))
                 await interaction.response.send_message('Left ' + interaction.guild.get_role(self.role_id).name, ephemeral=True)
             else:
                 await interaction.response.send_message('You are not in ' + interaction.guild.get_role(self.role_id).name, ephemeral=True)
-    
+
+class PersistentView(discord.ui.View):
+    def __init__(self, role_id):
+        super().__init__(timeout=None)
+
+        join_button = DynamicJoinButton(role_id=role_id)
+        leave_button = DynamicLeaveButton(role_id=role_id)
+        self.add_item(join_button)
+        self.add_item(leave_button)
+
+### -- DYNAMIC BUTTONS --
+class DynamicJoinButton(discord.ui.Button):
+    def __init__(self, role_id: int) -> None:
+        super().__init__()
+        self.label = 'Join'
+        self.style = discord.ButtonStyle.green
+        self.custom_id=f'button:join:role:{role_id}'
+        self.role_id: int = role_id
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        if interaction.guild.get_role(self.role_id) in interaction.user.roles:
+            await interaction.response.send_message('You are already in ' + interaction.guild.get_role(self.role_id).name, ephemeral=True)
+        else:
+            await interaction.user.add_roles(interaction.guild.get_role(self.role_id))
+            await interaction.response.send_message('Added to ' + interaction.guild.get_role(self.role_id).name, ephemeral=True)
+
+class DynamicLeaveButton(discord.ui.Button):
+    def __init__(self, role_id: int) -> None:
+        super().__init__()
+        self.label = 'Leave'
+        self.style = discord.ButtonStyle.red
+        self.custom_id=f'button:leave:role:{role_id}'
+        self.role_id: int = role_id
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        if interaction.guild.get_role(self.role_id) in interaction.user.roles:
+            await interaction.user.remove_roles(interaction.guild.get_role(self.role_id))
+            await interaction.response.send_message('Left ' + interaction.guild.get_role(self.role_id).name, ephemeral=True)
+        else:
+            await interaction.response.send_message('You are not in ' + interaction.guild.get_role(self.role_id).name, ephemeral=True)
 
 class GangCog(commands.Cog):
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: commands.Bot, all_gang_ids):
         self.bot = bot
         self.bot_test = 582060071052115978
         self.join_roles_here = 1027646452371046430
+        for gang_id in all_gang_ids:
+            self.bot.add_view(PersistentView(role_id=gang_id[0]))
 
     async def cog_check(self, ctx: Context):
         if (not IS_ENABLED):
@@ -66,6 +108,8 @@ class GangCog(commands.Cog):
             for channel in interaction.guild.channels:
                 if channel.name == put_after_channel_str:
                     await channel_created.move(after=channel)
+
+        await self.bot.db_manager.add_gang(new_role.id, new_role.name.lower().strip())
                     
         sent = await interaction.response.send_message(gang_name + ' Gang has been made! Type "/join ' + gang_name + ' Gang" to join', ephemeral=True)
 
@@ -136,6 +180,8 @@ class GangCog(commands.Cog):
             await interaction.response.send_message('This command can only be used in #join-roles-here!', ephemeral=True)
             return
         
+        await self.bot.db_manager.make_gang_table()
+        
         # THIS DELETES THE HISTORY OF THE CHANNEL
         if(interaction.channel_id == self.join_roles_here):
             async for message in interaction.guild.get_channel(self.join_roles_here).history(limit=None):
@@ -152,10 +198,13 @@ class GangCog(commands.Cog):
                 if role.name[-4:].lower().strip() == 'gang':
                     if (role.id != 636466520591040512 and role.id != 838502048483377172 and role.id != 885402414000242688 and role.id != 889560965245456394 and role.id != 971100520007761971): # Filter out dumb gangs like gang gang, pop 69 in 2010 gang, etc
                         gang_roles[role.name.lower()] = role.id
+                        gang_exists = await self.bot.db_manager.get_gang_id(role.name.lower().strip())
+                        if gang_exists == None:
+                            await self.bot.db_manager.add_gang(role.id, role.name.lower().strip())
 
         sorted_roles = dict(sorted(gang_roles.items()))
         for sorted_role_name, sorted_role_id in sorted_roles.items():
-            await interaction.channel.send('# ' + interaction.guild.get_role(sorted_role_id).name, view=RoleManager(role_id=sorted_role_id))
+            await interaction.channel.send('# ' + interaction.guild.get_role(sorted_role_id).name, view=PersistentView(role_id=sorted_role_id))
 
         await interaction.response.send_message('Join Roles Here created!', ephemeral=True)
 
@@ -168,4 +217,6 @@ class GangCog(commands.Cog):
 
 
 async def setup(bot):
-    await bot.add_cog(GangCog(bot))
+    all_gang_ids = await bot.db_manager.get_all_gang_ids()
+    #all_gang_ids = []
+    await bot.add_cog(GangCog(bot, all_gang_ids))

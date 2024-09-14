@@ -12,6 +12,7 @@ import random
 #casino (outcome string UNIQUE, bets string)
 #music (userid text, song text, liked integer (0 or 1))
 #nfts (id integer UNIQUE, url text, userid text, price integer)
+#gangs (id integer UNIQUE, name text)
 
 class DatabaseManager:
     def __init__(self, dsn, min_size=1, max_size=5, max_lifetime=300, max_idle=60):
@@ -65,21 +66,26 @@ class DatabaseManager:
 
     async def add_counter(self, counter):
         await self.execute_with_retries("INSERT INTO counters VALUES (?,?)", (counter, 0))
+        await self.commit()
     
     async def add_one_to_counter(self, counter, number):
         count = await self.execute_with_retries("SELECT count FROM counters WHERE counter=?", (counter,))
         new_count = count[0] + 1
         await self.execute_with_retries("REPLACE INTO counters (counter, count) VALUES (?, ?)", (counter, new_count))
+        await self.commit()
         return new_count
 
     async def add_command(self, command, output, author):
         await self.execute_with_retries("INSERT INTO commands VALUES (?,?,?)", (command, output, author))
+        await self.commit()
 
     async def delete_command(self, command):
         await self.execute_with_retries("DELETE from commands WHERE command_name=?", (command,))
+        await self.commit()
 
     async def delete_command_output(self, command, output):
         await self.execute_with_retries("DELETE from commands WHERE command_name=? AND output=?", (command, output))
+        await self.commit()
 
     async def does_command_exist(self, command) -> bool:
         comm = await self.execute_with_retries("SELECT * from commands WHERE command_name=?", (command,))
@@ -100,6 +106,34 @@ class DatabaseManager:
     async def get_output(self, command):
         output = await self.execute_with_retries("SELECT output from commands WHERE command_name=?", (command,), fetchall=True)
         return output
+
+    async def add_gang(self, role_id, role_name):
+        await self.execute_with_retries("INSERT INTO gangs VALUES (?,?)", (role_name, role_id))
+        await self.commit()
+
+    async def make_gang_table(self):
+        await self.execute_with_retries('''
+        CREATE TABLE IF NOT EXISTS gangs (
+            role_name TEXT,
+            role_id INTEGER UNIQUE)
+        ''', ())
+        await self.commit()
+
+    async def delete_gang(self, role_id, role_name):
+        await self.execute_with_retries("DELETE from gangs WHERE role_id=? AND role_name=?)", (role_id, role_name))
+        await self.commit()
+
+    async def get_gang_id(self, role_name):
+        role_id = await self.execute_with_retries("SELECT role_id from gangs WHERE role_name=?", (role_name,))
+        return role_id
+
+    async def get_gang_name(self, role_id):
+        role_name = await self.execute_with_retries("SELECT role_name from gangs WHERE role_id=?", (role_id,))
+        return role_name
+
+    async def get_all_gang_ids(self):
+        role_ids = await self.execute_with_retries("SELECT role_id from gangs", (), fetchall=True)
+        return role_ids
 
     async def commit(self):
         with self.connection as conn:
