@@ -1,7 +1,10 @@
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord import app_commands, Member, RawReactionActionEvent, Message
-from GangCog import RoleManager
+import sys 
+import os
+sys.path.append(os.path.dirname(__file__))
+from gang_cog import RoleManager
 
 IS_ENABLED = True
 
