@@ -1,3 +1,4 @@
+from typing import List
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord import app_commands, Interaction, PermissionOverwrite
@@ -95,15 +96,17 @@ class GangCog(commands.Cog):
                     await interaction.response.send_message(movie_night_addendum + 'Added ' + interaction.user.display_name + ' to ' + role.name, ephemeral=True)
 
     @join_gang.autocomplete('gang_name') # Attempt autocomplete
-    async def join_gang_autocomplete(self, interaction: Interaction, current: str):
+    async def join_gang_autocomplete(self, interaction: Interaction, current: str) -> List[app_commands.Choice[str]]:
         gang_roles = []
         for role in interaction.guild.roles: # Get a list of every gang role
             if len(role.name) > 4:
                 if role.name[-4:].lower().strip() == 'gang':
                     gang_roles.append(role.name)
         
-            suggestions = [gang_name for gang_name in gang_roles if current.lower() in gang_name.lower()]
-            return [app_commands.Choice(name=gang_name, value=gang_name) for gang_name in suggestions]
+            return [ 
+                app_commands.Choice(name=gang_name, value = gang_name)
+                for gang_name in gang_roles if current.lower() in gang_name.lower()
+            ]
 
     @app_commands.command(name = 'leave', description='Leave a gang') # Remove from gang
     async def leave_gang(self, interaction: Interaction, gang_name: str):
@@ -119,15 +122,17 @@ class GangCog(commands.Cog):
                     await interaction.response.send_message('Removed ' + interaction.user.display_name + ' from ' + role.name, ephemeral=True)
 
     @leave_gang.autocomplete('gang_name') # Attempt autocomplete
-    async def leave_gang_autocomplete(self, interaction: Interaction, current: str):
+    async def leave_gang_autocomplete(self, interaction: Interaction, current: str) -> List[app_commands.Choice[str]]:
         gang_roles = []
         for role in interaction.guild.roles: # Get a list of every gang role
             if len(role.name) > 4:
                 if role.name[-4:].lower().strip() == 'gang':
                     gang_roles.append(role.name)
         
-            suggestions = [gang_name for gang_name in gang_roles if current.lower() in gang_name.lower()]
-            return [app_commands.Choice(name=gang_name, value=gang_name) for gang_name in suggestions]
+            return [ 
+                app_commands.Choice(name=gang_name, value = gang_name)
+                for gang_name in gang_roles if current.lower() in gang_name.lower()
+            ]
 
     @app_commands.checks.has_role(578065628691431435) #If has admin role
     @app_commands.command(name='generategangs')
