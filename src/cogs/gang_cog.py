@@ -7,7 +7,7 @@ IS_ENABLED = True
 
 class RoleManager(discord.ui.View):
         def __init__(self, role_id):
-            super().__init__()
+            super().__init__(timeout=None)
             self.role_id = role_id
 
         @discord.ui.button(label="Join", style=discord.ButtonStyle.green)
@@ -155,7 +155,7 @@ class GangCog(commands.Cog):
 
         sorted_roles = dict(sorted(gang_roles.items()))
         for sorted_role_name, sorted_role_id in sorted_roles.items():
-            await interaction.channel.send('# ' + interaction.guild.get_role(sorted_role_id).name, view=RoleManager(timeout=None, role_id=sorted_role_id))
+            await interaction.channel.send('# ' + interaction.guild.get_role(sorted_role_id).name, view=RoleManager(role_id=sorted_role_id))
 
         await interaction.response.send_message('Join Roles Here created!', ephemeral=True)
 
