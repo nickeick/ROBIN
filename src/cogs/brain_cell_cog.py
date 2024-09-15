@@ -136,6 +136,7 @@ class BrainCellCog(commands.Cog):
             receive_points = self.c.fetchone()
 
             author_replace = (str(interaction.user.name), author_points[0]-int(give[1])) # Give braincell
+            self.c.execute("REPLACE INTO braincell_points (name, points) VALUES (?, ?)", author_replace)
             if receive_points == None:
                 receive_replace = (str(receiver.name), int(give[1]))
             else:
