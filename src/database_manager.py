@@ -51,8 +51,31 @@ class DatabaseManager:
             await self.execute_with_retries("REPLACE INTO braincell_points (name, points) VALUES (?, ?)", (name, 1))
         await self.commit()
 
+    async def add_brain_cells(self, name: str, amount: int):
+        if amount < 0:
+            raise ValueError('Cannot add a negative value')
+        points = await self.execute_with_retries('SELECT points FROM braincell_points WHERE name=?', (name,))
+        if points != None:
+            await self.execute_with_retries("REPLACE INTO braincell_points (name, points) VALUES (?, ?)", (name, points[0] + amount))
+        else:
+            await self.execute_with_retries("REPLACE INTO braincell_points (name, points) VALUES (?, ?)", (name, amount))
+        await self.commit()
+
+    async def remove_brain_cells(self, name: str, amount: int):
+        if amount < 0:
+            raise ValueError('Cannot remove a negative value')
+        points = await self.execute_with_retries('SELECT points FROM braincell_points WHERE name=?', (name,))
+        if points == None:
+            raise ValueError('User has no brain cells to remove')
+        if points[0] < amount:
+            raise ValueError('User has insufficient brain cells to remove')
+        await self.execute_with_retries("REPLACE INTO braincell_points (name, points) VALUES (?, ?)", (name, points[0] - amount))
+        await self.commit()
+
     async def get_brain_cells(self, name):
         points = await self.execute_with_retries('SELECT points FROM braincell_points WHERE name=?', (name,))
+        if points == None:
+            raise ValueError('User has no brain cells')
         return points[0]
 
     async def get_point_leader(self):

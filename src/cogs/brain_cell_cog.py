@@ -117,35 +117,20 @@ class BrainCellCog(commands.Cog):
         else:
             await interaction.response.send_message("You don't have the brain cell <:bonk:772161497031507968>")
 
-    @app_commands.commmand(name='give', description='Give someone your braincells')
+    @app_commands.command(name='give', description='Give someone your braincells')
     async def give_braincell(self, interaction: Interaction, receiver: discord.Member, amount: int):
         try:
-            give = (receiver.group(1), amount.group(2))
-            assert interaction.guild.get_member_named(give[0]) != None, "Member does not exist"
-            
-            author_select = (str(interaction.user.name),)
-            self.c.execute('SELECT points FROM braincell_points WHERE name=?', author_select) # Check if user doing command is doing anything nefarious
-            author_points = self.c.fetchone()
-            assert author_points != None, "You have no Common Cents"
-            assert author_points[0] >= int(give[1]), "You do not have enough Common Cents to give"
-            assert int(give[1]) >= 0, "You cannot gift negative points"
-            assert str(interaction.user.name) != str(receiver.name), "You cannot gift to yourself"
+            assert interaction.guild.get_member_named(receiver.name) != None, "Member does not exist"
+            assert str(interaction.user.name) != str(receiver.name), "You cannot give to yourself" # Catch nefarious actions
+            assert type(amount) == int, "Common Cents can only be given in integer values"
 
-            receive_select = (str(receiver.name),)
-            self.c.execute('SELECT points FROM braincell_points WHERE name=?', receive_select) # Check on receiver
-            receive_points = self.c.fetchone()
+            await self.bot.db_manager.remove_brain_cells(interaction.user.name, amount)
+            await self.bot.db_manager.add_brain_cells(receiver.name, amount)
+            await interaction.response.send_message("You have given " + str(amount) + " Common Cents to " + receiver.name)
 
-            author_replace = (str(interaction.user.name), author_points[0]-int(give[1])) # Give braincell
-            self.c.execute("REPLACE INTO braincell_points (name, points) VALUES (?, ?)", author_replace)
-            if receive_points == None:
-                receive_replace = (str(receiver.name), int(give[1]))
-            else:
-                receive_replace = (str(receiver.name), receive_points[0]+int(give[1]))
-            self.c.execute("REPLACE INTO braincell_points (name, points) VALUES (?, ?)", receive_replace)
-            self.db.commit()
-            await interaction.response.send_message("You have given " + give[1] + " Common Cents to " + give[0])
-
-        except AssertionError as err: # Catch neferious actions
+        except ValueError as err: # Catch nefarious actions
+            await interaction.response.send_message(err, ephemeral=True)
+        except AssertionError as err:
             await interaction.response.send_message(err, ephemeral=True)
 
     @app_commands.command(description='View the cents leaderboard')
