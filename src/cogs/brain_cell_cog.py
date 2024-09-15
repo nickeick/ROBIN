@@ -1,3 +1,4 @@
+from typing import Optional
 from discord.ext import commands, tasks
 from discord.ext.commands import Context
 from discord import app_commands, Interaction, Guild, Client
@@ -92,7 +93,7 @@ class BrainCellCog(commands.Cog):
             to_send += '|   ' + str(item[1]) + '\n'
         return to_send
 
-    @app_commands.command(description='See who has the braincell!')
+    @app_commands.command(description='See who has the braincell')
     async def braincell(self, interaction: Interaction):
         to_send = ''
         for member in interaction.guild.members:
@@ -100,7 +101,7 @@ class BrainCellCog(commands.Cog):
                 to_send += member.display_name + ' is hogging the server brain cell\n'
         await interaction.response.send_message(to_send)
 
-    @app_commands.command(description='Use the braincell to think!')
+    @app_commands.command(description='Use the braincell to think')
     async def think(self, interaction: Interaction):
         if interaction.guild.get_role(self.braincell_role_id) in interaction.user.roles:
             if interaction.user.id not in self.think_locked:
@@ -116,14 +117,30 @@ class BrainCellCog(commands.Cog):
         else:
             await interaction.response.send_message("You don't have the brain cell <:bonk:772161497031507968>")
 
-    @app_commands.command(description='View the cents leaderboard!')
+    @app_commands.command(name='give', description='Give someone your braincells')
+    async def give_braincell(self, interaction: Interaction, receiver: discord.Member, amount: int):
+        try:
+            assert interaction.guild.get_member_named(receiver.name) != None, "Member does not exist"
+            assert str(interaction.user.name) != str(receiver.name), "You cannot give to yourself" # Catch nefarious actions
+            assert type(amount) == int, "Common Cents can only be given in integer values"
+
+            await self.bot.db_manager.remove_brain_cells(interaction.user.name, amount)
+            await self.bot.db_manager.add_brain_cells(receiver.name, amount)
+            await interaction.response.send_message("You have given " + str(amount) + " Common Cents to " + receiver.name)
+
+        except ValueError as err: # Catch nefarious actions
+            await interaction.response.send_message(err, ephemeral=True)
+        except AssertionError as err:
+            await interaction.response.send_message(err, ephemeral=True)
+
+    @app_commands.command(description='View the cents leaderboard')
     async def leaderboard(self, interaction: Interaction):
         to_send = await self.printLeaderboard(interaction, 1, 10)
         sent = await interaction.response.send_message(to_send, view=LeaderboardView())
 
-    @app_commands.command(description='See how many times you\'ve /think\'ed!')
+    @app_commands.command(description='See how many times you\'ve /think\'ed')
     async def cents(self, interaction: Interaction):
-        await interaction.response.send_message('This is not a real command you just got pranked :tracerdab:633510729915564050')
+        await interaction.response.send_message('This is not a real command you just got pranked <:tracerdab:633510729915564050>')
 
     @tasks.loop(minutes = 20)
     async def braincell_swap(self):

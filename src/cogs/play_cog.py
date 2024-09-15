@@ -49,7 +49,7 @@ class PlayCog(commands.Cog):
         if mention == "":
             sent = await interaction.response.send_message('Dojo, is anyone interested in playing ' + time + "\n\nYesses:\n*" + interaction.user.mention + '*', view=PlayView(timeout=None))
         else:
-            sent = await interaction.response.send_message(mention + 'is anyone interested in playing ' + time + "\n\nYesses:\n*" + interaction.user.name + '*', view=PlayView(timeout=None))
+            sent = await interaction.response.send_message(mention + 'is anyone interested in playing ' + time + "\n\nYesses:\n*" + interaction.user.mention + '*', view=PlayView(timeout=None))
 
 
 async def setup(bot):
