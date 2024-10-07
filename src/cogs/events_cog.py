@@ -18,7 +18,7 @@ class EventsCog(commands.Cog):
     
     @commands.Cog.listener()
     async def on_member_join(self, member: Member):
-        if message.guild.id == self.dojo_id:
+        if member.guild.id == self.dojo_id:
             await member.add_roles(member.guild.get_role(self.initiate_role_id)) # Assign initiate role on user join
 
 
@@ -38,7 +38,9 @@ class EventsCog(commands.Cog):
         if message.content.startswith("I'm "):
             if message.guild.id == self.dojo_id:
                 message_content = message.content.replace("I'm ", '').strip()
-                await message.channel.send("Hi " + message_content + ", I'm Robin")
+                await message.reply(content="Hi " + message_content + ", I'm Robin")
+        if "thank you robin" in message.content.lower():
+            await message.reply(content="You're welcome")
 
 
 async def setup(bot):
