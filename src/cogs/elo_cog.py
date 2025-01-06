@@ -16,7 +16,7 @@ class EloCog(commands.Cog):
     @app_commands.command()
     async def elo(self, interaction: Interaction, person1: int, person2: int):
         number = 1/(1 + 10 ** ((person2 - person1)/400))
-        await interaction.response.send_message("There is a " + str(number) + " percent chance that person 1 beats person 2")
+        await interaction.response.send_message("There is a " + str(number * 100) + " percent chance that person 1 beats person 2")
 
 async def setup(bot):
     await bot.add_cog(EloCog(bot))
