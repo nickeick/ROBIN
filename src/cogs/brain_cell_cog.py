@@ -19,6 +19,7 @@ class LeaderboardView(discord.ui.View): # Create a class called LeaderboardView 
         endingIndex = startingIndex + 9
 
         if(startingIndex >= 1):
+            # Update the Leaderboard based on the new range
             to_send = await braincell_cog.printLeaderboard(interaction, startingIndex, endingIndex)
             await interaction.message.edit(content=to_send)
         await interaction.response.defer()
@@ -32,7 +33,8 @@ class LeaderboardView(discord.ui.View): # Create a class called LeaderboardView 
         # 11-20
         startingIndex = int(contentLines[1].split(".")[0]) + 10
         endingIndex = startingIndex + 9
-
+        
+        # Update the Leaderboard based on the new range
         to_send = await braincell_cog.printLeaderboard(interaction, startingIndex, endingIndex)
         await interaction.message.edit(content=to_send)
         await interaction.response.defer()
@@ -60,12 +62,14 @@ class BrainCellCog(commands.Cog):
         await genius_member.add_roles(guild.get_role(self.genius_id))
 
     async def printLeaderboard(self, interaction: Interaction, lowerBound: int, upperBound: int):
+        # Get all the braincells in the database
         items = await self.bot.db_manager.get_all_points()
         filteredItems = list(filter(lambda x : interaction.guild.get_member_named(x[0]) is not None, items))
         if (lowerBound - 1) > len(filteredItems):
             to_send = interaction.message.content
             return to_send
 
+        # Leaderboard Title
         to_send = '🪙  **Common Cents Leaderboard:**  🪙\n'
         for index in range(lowerBound, upperBound + 1):
             if index > len(filteredItems):
