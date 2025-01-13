@@ -62,6 +62,12 @@ class CustomBot(commands.Bot):
 
     async def on_ready(self):
         print(f'Logged in as {self.user} (ID: {self.user.id})')
+        # edit the existing event loop
+        httpcog = self.get_cog('HTTPCog')
+        if httpcog is not None:
+            print("Endpoint opened")
+            self.loop.create_task(httpcog.start_app())
+        
 
     async def close(self):
         await super().close()

@@ -27,12 +27,8 @@ class HTTPCog(commands.Cog):
         web.run_app(self.app, port=8080)
 
 
-
 async def setup(bot):
     await bot.add_cog(HTTPCog(bot))
-    # edit the existing event loop
-    #httpcog = bot.get_cog('HTTPCog')
-    #if httpcog is not None:
-        #await httpcog.start_app()
+    
     
     
