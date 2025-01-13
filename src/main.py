@@ -67,6 +67,7 @@ class CustomBot(commands.Bot):
 
     async def on_ready(self):
         print(f'Logged in as {self.user} (ID: {self.user.id})')
+        self.loop.create_task(start_aiohttp_server())
         # edit the existing event loop
         # httpcog = self.get_cog('HTTPCog')
         # if httpcog is not None:
@@ -86,10 +87,17 @@ def update_timestamp(request):
 def start_aiohttp_server():
     app = web.Application()
     app.router.add_get('/button', update_timestamp)
-    web.run_app(app, port=8080)
 
-thread = Thread(target=start_aiohttp_server(), daemon=True)
-thread.start()
+    # Use AppRunner and TCPSite for non-blocking server
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, 'localhost', 8080)
+    await site.start()
+    print("Aiohttp server started at http://localhost:8080")
+    #web.run_app(app, port=8080)
+
+#thread = Thread(target=start_aiohttp_server(), daemon=True)
+#thread.start()
 
 async def main():
 

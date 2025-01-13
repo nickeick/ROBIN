@@ -24,8 +24,8 @@ class HTTPCog(commands.Cog):
         if now() - self.bot.timestamp <= 5:
             self.mute.send('The Button has been pressed')
 
-    @message_loop.before_loop
-    async def before_message_loop(self):
+    @handle.before_loop
+    async def before_handle(self):
         print("Waiting for the bot to be ready...")
         await self.bot.wait_until_ready()  # Ensure the bot is ready before starting the loop
         self.bot.timestamp = datetime.now()
