@@ -83,6 +83,7 @@ timestamp = datetime.now()
 async def update_timestamp(request):
         # Button has been pressed
         timestamp = datetime.now()
+        return web.Response(text="Time updated to {timestamp}")
 
 async def start_aiohttp_server():
     app = web.Application()
