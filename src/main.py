@@ -14,6 +14,9 @@ from discord.ext.commands import Context
 from discord.ext import commands
 from aiohttp import ClientSession
 
+from threading import Thread
+from datetime import datetime, now
+
 from database_manager import DatabaseManager
 
 
@@ -24,12 +27,14 @@ class CustomBot(commands.Bot):
         db_manager: DatabaseManager,
         web_client: ClientSession,
         testing_guild_id: Optional[int] = None,
+        timestamp: datetime
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
         self.web_client = web_client
         self.testing_guild_id = testing_guild_id
         self.db_manager = db_manager
+        self.timestamp = timestamp
 
 
 
@@ -63,17 +68,28 @@ class CustomBot(commands.Bot):
     async def on_ready(self):
         print(f'Logged in as {self.user} (ID: {self.user.id})')
         # edit the existing event loop
-        httpcog = self.get_cog('HTTPCog')
-        if httpcog is not None:
-            print("Endpoint opened")
-            self.loop.create_task(httpcog.start_app())
+        # httpcog = self.get_cog('HTTPCog')
+        # if httpcog is not None:
+        #     print("Endpoint opened")
+        #     self.loop.create_task(httpcog.start_app())
         
 
     async def close(self):
         await super().close()
         await self.db_manager.close()
 
+timestamp = now()
+def update_timestamp(request):
+        # Button has been pressed
+        timestamp = now()
 
+def start_aiohttp_server():
+    app = web.Application()
+    app.router.add_get('/button', update_timestamp)
+    web.run_app(app, port=8080)
+
+thread = Thread(target=start_aiohttp_server(), daemon=True)
+thread.start()
 
 async def main():
 
@@ -114,7 +130,7 @@ async def main():
 
     async with ClientSession() as our_client, DatabaseManager(DATABASE_PATH) as db_manager:
         # 2. We become responsible for starting the bot.
-            async with CustomBot(commands.when_mentioned, db_manager=db_manager, web_client=our_client, intents=intents, testing_guild_id=TEST_GUILD) as bot:
+            async with CustomBot(commands.when_mentioned, db_manager=db_manager, web_client=our_client, intents=intents, testing_guild_id=TEST_GUILD, timestamp=timestamp) as bot:
 
                 await bot.start(os.getenv('TOKEN'))
 
