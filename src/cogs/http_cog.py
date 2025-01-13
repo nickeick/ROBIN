@@ -26,4 +26,5 @@ class HTTPCog(commands.Cog):
 
 
 async def setup(bot):
+    web.run_app(app, port=8080)
     await bot.add_cog(HTTPCog(bot))
