@@ -30,8 +30,9 @@ class HTTPCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(HTTPCog(bot))
-    httpcog = bot.get_cog('HTTPCog')
-    if httpcog is not None:
-        await httpcog.start_app()
+    # edit the existing event loop
+    #httpcog = bot.get_cog('HTTPCog')
+    #if httpcog is not None:
+        #await httpcog.start_app()
     
     
