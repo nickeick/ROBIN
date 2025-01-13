@@ -22,7 +22,7 @@ class HTTPCog(commands.Cog):
     async def handle(self, request):
         # Button has been pressed
         #if datetime.now() - self.bot.timestamp <= 5:
-        self.bot.get_channel(870946768928534528).send('The Button has been pressed')
+        await self.bot.get_channel(870946768928534528).send('The Button has been pressed')
         return web.Response(text=f"Request Received")
 
     # @handle.before_loop
