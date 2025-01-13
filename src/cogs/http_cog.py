@@ -6,12 +6,12 @@ from datetime import date, timedelta, datetime
 
 IS_ENABLED = True
 
+# This cog exists for the purpose of handling the http server created in main
 class HTTPCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.app = web.Application()
         self.app.add_routes([web.get('/button', self.handle)])
-        self.mute = self.bot.get_channel(870946768928534528)
 
     async def cog_check(self, ctx: Context):
         if (not IS_ENABLED):
@@ -22,7 +22,7 @@ class HTTPCog(commands.Cog):
     async def handle(self, request):
         # Button has been pressed
         #if datetime.now() - self.bot.timestamp <= 5:
-        self.mute.send('The Button has been pressed')
+        self.bot.get_channel(870946768928534528).send('The Button has been pressed')
         return web.Response(text=f"Time updated to {timestamp}")
 
     # @handle.before_loop
