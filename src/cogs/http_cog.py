@@ -32,6 +32,6 @@ async def setup(bot):
     await bot.add_cog(HTTPCog(bot))
     httpcog = bot.get_cog('HTTPCog')
     if httpcog is not None:
-        httpcog.start_app()
+        await httpcog.start_app()
     
     
