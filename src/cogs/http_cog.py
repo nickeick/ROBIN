@@ -2,7 +2,7 @@ from aiohttp import web
 from discord.ext import commands, tasks
 from discord.ext.commands import Context
 from discord import app_commands, Interaction
-from datetime import date, timedelta, datetime, now
+from datetime import date, timedelta, datetime
 
 IS_ENABLED = True
 

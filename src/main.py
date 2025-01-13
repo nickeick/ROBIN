@@ -12,7 +12,7 @@ import sqlite3
 import discord
 from discord.ext.commands import Context
 from discord.ext import commands
-from aiohttp import ClientSession
+from aiohttp import ClientSession, web
 
 from threading import Thread
 from datetime import datetime
@@ -27,7 +27,7 @@ class CustomBot(commands.Bot):
         db_manager: DatabaseManager,
         web_client: ClientSession,
         testing_guild_id: Optional[int] = None,
-        timestamp: datetime
+        timestamp: datetime,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
