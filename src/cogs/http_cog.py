@@ -28,7 +28,7 @@ class HTTPCog(commands.Cog):
     async def before_message_loop(self):
         print("Waiting for the bot to be ready...")
         await self.bot.wait_until_ready()  # Ensure the bot is ready before starting the loop
-        self.bot.timestamp = now()
+        self.bot.timestamp = datetime.now()
 
     # async def start_app(self):
     #     web.run_app(self.app, port=8080)

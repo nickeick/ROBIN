@@ -15,7 +15,7 @@ from discord.ext import commands
 from aiohttp import ClientSession
 
 from threading import Thread
-from datetime import datetime, now
+from datetime import datetime
 
 from database_manager import DatabaseManager
 
@@ -78,10 +78,10 @@ class CustomBot(commands.Bot):
         await super().close()
         await self.db_manager.close()
 
-timestamp = now()
+timestamp = datetime.now()
 def update_timestamp(request):
         # Button has been pressed
-        timestamp = now()
+        timestamp = datetime.now()
 
 def start_aiohttp_server():
     app = web.Application()
