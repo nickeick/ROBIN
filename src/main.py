@@ -80,11 +80,11 @@ class CustomBot(commands.Bot):
         await self.db_manager.close()
 
 timestamp = datetime.now()
-def update_timestamp(request):
+async def update_timestamp(request):
         # Button has been pressed
         timestamp = datetime.now()
 
-def start_aiohttp_server():
+async def start_aiohttp_server():
     app = web.Application()
     app.router.add_get('/button', update_timestamp)
 
