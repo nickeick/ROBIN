@@ -67,12 +67,12 @@ class CustomBot(commands.Bot):
 
     async def on_ready(self):
         print(f'Logged in as {self.user} (ID: {self.user.id})')
-        self.loop.create_task(start_aiohttp_server())
+        
         # edit the existing event loop
-        # httpcog = self.get_cog('HTTPCog')
-        # if httpcog is not None:
-        #     print("Endpoint opened")
-        #     self.loop.create_task(httpcog.start_app())
+        httpcog = self.get_cog('HTTPCog')
+        if httpcog is not None:
+            print("Endpoint opened")
+            self.loop.create_task(start_aiohttp_server(httpcog.handle()))
         
 
     async def close(self):
@@ -83,11 +83,11 @@ timestamp = datetime.now()
 async def update_timestamp(request):
         # Button has been pressed
         timestamp = datetime.now()
-        return web.Response(text="Time updated to {timestamp}")
+        return web.Response(text=f"Time updated to {timestamp}")
 
-async def start_aiohttp_server():
+async def start_aiohttp_server(handle_function):
     app = web.Application()
-    app.router.add_get('/button', update_timestamp)
+    app.router.add_get('/button', handle_function)
 
     # Use AppRunner and TCPSite for non-blocking server
     runner = web.AppRunner(app)
@@ -96,9 +96,6 @@ async def start_aiohttp_server():
     await site.start()
     print("Aiohttp server started at http://localhost:8080")
     #web.run_app(app, port=8080)
-
-#thread = Thread(target=start_aiohttp_server(), daemon=True)
-#thread.start()
 
 async def main():
 
