@@ -40,13 +40,13 @@ class VocabCog(commands.Cog):
         channel_id = ctx.channel.id  # The channel to listen in
 
         # Create an asynchronous task for message checking
-        async def check_for_message():
+        async def check_for_message(channel_id: int):
             try:
                 # Wait for a message from the user in the same channel
                 message = await bot.wait_for(
                     "message",
                     timeout=timer_duration,
-                    check=lambda m: m.channel.id == self.mute
+                    check=lambda m: m.channel.id == channel.id
                 )
                 return f"Message received: {message.content}"
             except asyncio.TimeoutError:
@@ -54,7 +54,7 @@ class VocabCog(commands.Cog):
 
         # Run the tasks concurrently
         timer_task = asyncio.create_task(self.timer(interaction, "You have 10 seconds to type the word " + target, 10))
-        message_task = asyncio.create_task(check_for_message())
+        message_task = asyncio.create_task(check_for_message(self.mute.id))
 
         # Wait for either the timer to finish or a message to be sent
         done, pending = await asyncio.wait(
