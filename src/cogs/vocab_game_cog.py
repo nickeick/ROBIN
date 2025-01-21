@@ -20,7 +20,7 @@ class VocabCog(commands.Cog):
             await interaction.response.send_message(content=countdown_text + str(seconds))
             for i in range(seconds, -1, -1):
                 await asyncio.sleep(1)
-                interaction.edit_original_response(content=countdown_text = str(i))
+                await interaction.edit_original_response(content=countdown_text + str(i))
 
     @app_commands.command()
     async def countdown(self, interaction: Interaction, seconds: int):
