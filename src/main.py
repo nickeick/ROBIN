@@ -27,7 +27,6 @@ class CustomBot(commands.Bot):
         db_manager: DatabaseManager,
         web_client: ClientSession,
         testing_guild_id: Optional[int] = None,
-        timestamp: datetime,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
@@ -131,7 +130,7 @@ async def main():
 
     async with ClientSession() as our_client, DatabaseManager(DATABASE_PATH) as db_manager:
         # 2. We become responsible for starting the bot.
-            async with CustomBot(commands.when_mentioned, db_manager=db_manager, web_client=our_client, intents=intents, testing_guild_id=TEST_GUILD, timestamp=timestamp) as bot:
+            async with CustomBot(commands.when_mentioned, db_manager=db_manager, web_client=our_client, intents=intents, testing_guild_id=TEST_GUILD) as bot:
 
                 await bot.start(os.getenv('TOKEN'))
 
