@@ -45,20 +45,15 @@ class VocabCog(commands.Cog):
 
     @app_commands.command()
     async def vocab(self, interaction: Interaction):
-        #await interaction.response.send_message("STEP 0")
         words = ['apple', 'banana', 'orange']
         target = sample(words, 1)[0]
         """Start a timer that cancels if a specific message is received."""
         timer_duration = 10  # Duration of the timer in seconds
         channel_id = interaction.channel.id  # The channel to listen in
 
-        #await interaction.response.send_message("STEP 1")
-
         # Run the tasks concurrently
         timer_task = asyncio.create_task(self.timer(interaction, f"### You have {timer_duration} seconds to type the word {target} \n # ", timer_duration))
         message_task = asyncio.create_task(check_for_message(target, timer_duration, self.mute.id))
-
-        #await interaction.response.send_message("STEP 2")
 
         # Wait for either the timer to finish or a message to be sent
         done, pending = await asyncio.wait(

@@ -69,7 +69,7 @@ class CustomBot(commands.Bot):
         httpcog = self.get_cog('HTTPCog')
         if httpcog is not None:
             print("Endpoint opened")
-            #self.loop.create_task(start_aiohttp_server(httpcog.handle))
+            self.loop.create_task(start_aiohttp_server(httpcog.handle))
         
 
     async def close(self):
