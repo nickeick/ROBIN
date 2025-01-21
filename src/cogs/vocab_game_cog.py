@@ -36,7 +36,7 @@ class VocabCog(commands.Cog):
         target = sample(words, 1)[0]
         """Start a timer that cancels if a specific message is received."""
         timer_duration = 10  # Duration of the timer in seconds
-        user_id = interaction.author.id  # The ID of the user to listen for
+        user_id = interaction.message.author.id  # The ID of the user to listen for
         channel_id = interaction.channel.id  # The channel to listen in
 
         # Create an asynchronous task for message checking
