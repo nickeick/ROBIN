@@ -79,11 +79,6 @@ class CustomBot(commands.Bot):
         await super().close()
         await self.db_manager.close()
 
-timestamp = datetime.now()
-async def update_timestamp(request):
-        # Button has been pressed
-        timestamp = datetime.now()
-        return web.Response(text=f"Time updated to {timestamp}")
 
 async def start_aiohttp_server(handle_function):
     app = web.Application()
