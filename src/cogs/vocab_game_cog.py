@@ -26,6 +26,19 @@ class VocabCog(commands.Cog):
                 await interaction.edit_original_response(content=countdown_text + str(i))
         return "Timer finished!"
 
+    # Create an asynchronous task for message checking
+    async def check_for_message(self, target, channel_id: int):
+        try:
+            # Wait for a message from the user in the same channel
+            message = await self.bot.wait_for(
+                target,
+                timeout=timer_duration,
+                check=lambda m: m.channel.id == channel.id
+            )
+            return f"Message received: {message.content}"
+        except asyncio.TimeoutError:
+            return None
+
     @app_commands.command()
     async def countdown(self, interaction: Interaction, seconds: int):
         await self.timer(interaction, self.countdown_text, seconds)
@@ -39,22 +52,13 @@ class VocabCog(commands.Cog):
         user_id = interaction.message.author.id  # The ID of the user to listen for
         channel_id = interaction.channel.id  # The channel to listen in
 
-        # Create an asynchronous task for message checking
-        async def check_for_message(channel_id: int):
-            try:
-                # Wait for a message from the user in the same channel
-                message = await bot.wait_for(
-                    "message",
-                    timeout=timer_duration,
-                    check=lambda m: m.channel.id == channel.id
-                )
-                return f"Message received: {message.content}"
-            except asyncio.TimeoutError:
-                return None
+        interaction.response.send_message("STEP 1")
 
         # Run the tasks concurrently
         timer_task = asyncio.create_task(self.timer(interaction, "You have 10 seconds to type the word " + target, timer_duration))
-        message_task = asyncio.create_task(check_for_message(self.mute.id))
+        message_task = asyncio.create_task(check_for_message(target, self.mute.id))
+
+        interaction.response.send_message("STEP 2")
 
         # Wait for either the timer to finish or a message to be sent
         done, pending = await asyncio.wait(
