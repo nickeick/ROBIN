@@ -33,7 +33,7 @@ class VocabCog(commands.Cog):
             message = await self.bot.wait_for(
                 'message',
                 timeout=timer_duration,
-                check=lambda m: m.channel.id == channel.id and m.content == target
+                check=lambda m: m.channel.id == channel_id and m.content == target
             )
             return f"Message received: {message.content}"
         except asyncio.TimeoutError:
