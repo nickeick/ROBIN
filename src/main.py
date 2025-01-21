@@ -33,8 +33,6 @@ class CustomBot(commands.Bot):
         self.web_client = web_client
         self.testing_guild_id = testing_guild_id
         self.db_manager = db_manager
-        self.timestamp = timestamp
-
 
 
     async def setup_hook(self) -> None:
