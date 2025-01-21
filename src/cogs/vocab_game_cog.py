@@ -36,8 +36,8 @@ class VocabCog(commands.Cog):
         target = sample(words, 1)[0]
         """Start a timer that cancels if a specific message is received."""
         timer_duration = 10  # Duration of the timer in seconds
-        user_id = ctx.author.id  # The ID of the user to listen for
-        channel_id = ctx.channel.id  # The channel to listen in
+        user_id = interaction.author.id  # The ID of the user to listen for
+        channel_id = interaction.channel.id  # The channel to listen in
 
         # Create an asynchronous task for message checking
         async def check_for_message(channel_id: int):
@@ -53,7 +53,7 @@ class VocabCog(commands.Cog):
                 return None
 
         # Run the tasks concurrently
-        timer_task = asyncio.create_task(self.timer(interaction, "You have 10 seconds to type the word " + target, 10))
+        timer_task = asyncio.create_task(self.timer(interaction, "You have 10 seconds to type the word " + target, timer_duration))
         message_task = asyncio.create_task(check_for_message(self.mute.id))
 
         # Wait for either the timer to finish or a message to be sent
@@ -68,9 +68,9 @@ class VocabCog(commands.Cog):
         # Handle the result
         result = done.pop().result()
         if result == "Timer finished!":
-            await ctx.send("Time's up!")
+            await interaction.response.send_message("Time's up!")
         else:
-            await ctx.send(result)
+            await interaction.response.send_message(result)
             
 
 
