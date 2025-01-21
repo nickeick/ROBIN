@@ -21,18 +21,8 @@ class HTTPCog(commands.Cog):
     #@tasks.loop(seconds=5)
     async def handle(self, request):
         # Button has been pressed
-        #if datetime.now() - self.bot.timestamp <= 5:
         await self.bot.get_channel(870946768928534528).send('The Button has been pressed')
         return web.Response(text=f"Request Received")
-
-    # @handle.before_loop
-    # async def before_handle(self):
-    #     print("Waiting for the bot to be ready...")
-    #     await self.bot.wait_until_ready()  # Ensure the bot is ready before starting the loop
-    #     self.bot.timestamp = datetime.now()
-
-    # async def start_app(self):
-    #     web.run_app(self.app, port=8080)
 
 
 async def setup(bot):
