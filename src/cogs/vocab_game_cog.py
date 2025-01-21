@@ -27,7 +27,7 @@ class VocabCog(commands.Cog):
         return "Timer finished!"
 
     # Create an asynchronous task for message checking
-    async def check_for_message(self, target, channel_id: int):
+    async def check_for_message(self, target, timer_duration, channel_id: int):
         try:
             # Wait for a message from the user in the same channel
             message = await self.bot.wait_for(
@@ -55,8 +55,8 @@ class VocabCog(commands.Cog):
         #await interaction.response.send_message("STEP 1")
 
         # Run the tasks concurrently
-        timer_task = asyncio.create_task(self.timer(interaction, f"### You have 10 seconds to type the word {target} \n # ", timer_duration))
-        message_task = asyncio.create_task(check_for_message(target, self.mute.id))
+        timer_task = asyncio.create_task(self.timer(interaction, f"### You have {timer_duration} seconds to type the word {target} \n # ", timer_duration))
+        message_task = asyncio.create_task(check_for_message(target, timer_duration, self.mute.id))
 
         #await interaction.response.send_message("STEP 2")
 
