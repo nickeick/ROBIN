@@ -31,9 +31,9 @@ class VocabCog(commands.Cog):
         try:
             # Wait for a message from the user in the same channel
             message = await self.bot.wait_for(
-                target,
+                'message',
                 timeout=timer_duration,
-                check=lambda m: m.channel.id == channel.id
+                check=lambda m: m.channel.id == channel.id and m.content == target
             )
             return f"Message received: {message.content}"
         except asyncio.TimeoutError:
@@ -72,9 +72,9 @@ class VocabCog(commands.Cog):
         # Handle the result
         result = done.pop().result()
         if result == "Timer finished!":
-            await interaction.response.send_message("Time's up!")
+            await interaction.channel.send("Time's up!")
         else:
-            await interaction.response.send_message(result)
+            await interaction.channel.send(result)
             
 
 
