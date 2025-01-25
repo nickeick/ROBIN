@@ -41,7 +41,7 @@ class VocabCog(commands.Cog):
 
     async def vocab_game(self, message: Message, target: str):
         """Start a timer that cancels if a specific message is received."""
-        if message.channel.id != self.mute.id
+        if message.channel.id != self.mute.id:
             await message.reply("You can only play this game in #mute!")
             return
         timer_duration = 10  # Duration of the timer in seconds
