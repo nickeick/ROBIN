@@ -10,7 +10,7 @@ class VocabCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.countdown_text = "### Countdown \n # "
-        self.mute = self.bot.get_channel(870946768928534528)
+        self.mute_id = 870946768928534528
 
     async def cog_check(self, ctx: Context):
         if (not IS_ENABLED):
@@ -19,7 +19,7 @@ class VocabCog(commands.Cog):
 
     async def timer(self, message: Message, countdown_text: str, seconds: int):
         if seconds > 0:
-            counter = await message.reply(content=countdown_text + str(seconds))
+            counter = await message.channel.send(content=countdown_text + str(seconds))
             for i in range(seconds-1, -1, -1):
                 # Wait for a second before updating timer
                 await asyncio.sleep(1)
@@ -42,13 +42,13 @@ class VocabCog(commands.Cog):
     async def vocab_game(self, message: Message, target: str):
         """Start a timer that cancels if a specific message is received."""
         if message.channel.id != self.mute.id:
-            await message.reply("You can only play this game in #mute!")
+            await message.channel.send("You can only play this game in #mute!")
             return
         timer_duration = 10  # Duration of the timer in seconds
 
         # Run the tasks concurrently
         timer_task = asyncio.create_task(self.timer(message, f"### You have {timer_duration} seconds to type the word {target} \n # ", timer_duration))
-        message_task = asyncio.create_task(self.check_for_message(target, timer_duration, 870946768928534528))
+        message_task = asyncio.create_task(self.check_for_message(target, timer_duration, self.mute_id))
 
         # Wait for either the timer to finish or a message to be sent
         done, pending = await asyncio.wait(
@@ -69,7 +69,7 @@ class VocabCog(commands.Cog):
 
     @app_commands.command()
     async def countdown(self, interaction: Interaction, seconds: int):
-        await self.timer(interaction, self.countdown_text, seconds)
+        await self.timer(interaction.message, self.countdown_text, seconds)
 
     @app_commands.command()
     async def vocab(self, interaction: Interaction):
