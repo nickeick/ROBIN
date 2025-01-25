@@ -49,11 +49,10 @@ class VocabCog(commands.Cog):
         target = sample(words, 1)[0]
         """Start a timer that cancels if a specific message is received."""
         timer_duration = 10  # Duration of the timer in seconds
-        channel_id = interaction.channel.id  # The channel to listen in
 
         # Run the tasks concurrently
         timer_task = asyncio.create_task(self.timer(interaction, f"### You have {timer_duration} seconds to type the word {target} \n # ", timer_duration))
-        message_task = asyncio.create_task(check_for_message(target, timer_duration, self.mute.id))
+        message_task = asyncio.create_task(self.check_for_message(target, timer_duration, 870946768928534528))
 
         # Wait for either the timer to finish or a message to be sent
         done, pending = await asyncio.wait(
