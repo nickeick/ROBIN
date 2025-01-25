@@ -69,14 +69,14 @@ class VocabCog(commands.Cog):
 
     @app_commands.command()
     async def countdown(self, interaction: Interaction, seconds: int):
-        await self.timer(interaction.channel, self.countdown_text, seconds)
         await interaction.response.defer()
+        await self.timer(interaction.channel, self.countdown_text, seconds)
 
     @app_commands.command()
     async def vocab(self, interaction: Interaction):
         words = ['apple', 'banana', 'orange']
         target = sample(words, 1)[0]
-        await interaction.response.send_message("Starting game...", ephemeral=True)
+        await interaction.response.defer()
         await self.vocab_game(interaction.channel, target)
 
             
