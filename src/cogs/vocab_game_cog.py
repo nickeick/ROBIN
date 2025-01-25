@@ -17,9 +17,9 @@ class VocabCog(commands.Cog):
             await ctx.send('This Cog is disabled')
         return IS_ENABLED
 
-    async def timer(self, message: Message, countdown_text: str, seconds: int):
+    async def timer(self, channel, countdown_text: str, seconds: int):
         if seconds > 0:
-            counter = await message.channel.send(content=countdown_text + str(seconds))
+            counter = await channel.send(content=countdown_text + str(seconds))
             for i in range(seconds-1, -1, -1):
                 # Wait for a second before updating timer
                 await asyncio.sleep(1)
@@ -27,7 +27,7 @@ class VocabCog(commands.Cog):
         return "Timer finished!"
 
     # Create an asynchronous task for message checking
-    async def check_for_message(self, target, timer_duration, channel_id: int):
+    async def check_for_message(self, target, timer_duration: int, channel_id: int):
         try:
             # Wait for a message from the user in the same channel
             message = await self.bot.wait_for(
@@ -39,15 +39,15 @@ class VocabCog(commands.Cog):
         except asyncio.TimeoutError:
             return None
 
-    async def vocab_game(self, message: Message, target: str):
+    async def vocab_game(self, channel, target: str):
         """Start a timer that cancels if a specific message is received."""
-        if message.channel.id != self.mute.id:
-            await message.channel.send("You can only play this game in #mute!")
+        if channel.id != self.mute.id:
+            await channel.send("You can only play this game in #mute!")
             return
         timer_duration = 10  # Duration of the timer in seconds
 
         # Run the tasks concurrently
-        timer_task = asyncio.create_task(self.timer(message, f"### You have {timer_duration} seconds to type the word {target} \n # ", timer_duration))
+        timer_task = asyncio.create_task(self.timer(channel, f"### You have {timer_duration} seconds to type the word {target} \n # ", timer_duration))
         message_task = asyncio.create_task(self.check_for_message(target, timer_duration, self.mute_id))
 
         # Wait for either the timer to finish or a message to be sent
@@ -62,21 +62,21 @@ class VocabCog(commands.Cog):
         # Handle the result
         result = done.pop().result()
         if result == "Timer finished!":
-            await message.channel.send("Time's up!")
+            await channel.send("Time's up!")
         else:
             await result.reply(content=f"Successful Response!")
-            await self.vocab_game(result, result.content)
+            await self.vocab_game(result.channel, result.content)
 
     @app_commands.command()
     async def countdown(self, interaction: Interaction, seconds: int):
-        await self.timer(interaction.message, self.countdown_text, seconds)
+        await self.timer(interaction.channel, self.countdown_text, seconds)
 
     @app_commands.command()
     async def vocab(self, interaction: Interaction):
         words = ['apple', 'banana', 'orange']
         target = sample(words, 1)[0]
         await interaction.response.send_message("Starting game...", ephemeral=True)
-        await self.vocab_game(interaction.message, target)
+        await self.vocab_game(interaction.channel, target)
 
             
 
