@@ -75,6 +75,7 @@ class VocabCog(commands.Cog):
     async def vocab(self, interaction: Interaction):
         words = ['apple', 'banana', 'orange']
         target = sample(words, 1)[0]
+        await interaction.response.send_message("Starting game...", ephemeral=True)
         await self.vocab_game(interaction.message, target)
 
             
