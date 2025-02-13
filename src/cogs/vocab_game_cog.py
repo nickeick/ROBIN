@@ -27,19 +27,19 @@ class VocabCog(commands.Cog):
         return "Timer finished!"
 
     # Create an asynchronous task for message checking
-    async def check_for_message(self, target, timer_duration: int, channel_id: int):
+    async def check_for_message(self, targets, timer_duration: int, channel_id: int):
         try:
             # Wait for a message from the user in the same channel
             message = await self.bot.wait_for(
                 'message',
                 timeout=timer_duration,
-                check=lambda m: m.channel.id == channel_id and m.content == target
+                check=lambda m: m.channel.id == channel_id and m.content.lower() in targets and m.content.lower() not in used_words
             )
-            return message
+            return message.lower()
         except asyncio.TimeoutError:
             return None
 
-    async def vocab_game(self, channel, target: str):
+    async def vocab_game(self, channel, targets: list, used_words: list):
         """Start a timer that cancels if a specific message is received."""
         if channel.id != self.mute_id:
             await channel.send("You can only play this game in #mute!")
@@ -47,8 +47,8 @@ class VocabCog(commands.Cog):
         timer_duration = 10  # Duration of the timer in seconds
 
         # Run the tasks concurrently
-        timer_task = asyncio.create_task(self.timer(channel, f"### You have {timer_duration} seconds to type the word {target} \n # ", timer_duration))
-        message_task = asyncio.create_task(self.check_for_message(target, timer_duration, self.mute_id))
+        timer_task = asyncio.create_task(self.timer(channel, f"### You have {timer_duration} seconds to type a fruit \n # ", timer_duration))
+        message_task = asyncio.create_task(self.check_for_message(targets, timer_duration, self.mute_id))
 
         # Wait for either the timer to finish or a message to be sent
         done, pending = await asyncio.wait(
@@ -64,8 +64,9 @@ class VocabCog(commands.Cog):
         if result == "Timer finished!":
             await channel.send("Time's up!")
         else:
+            used_words.append(result.content)
             await result.reply(content=f"Successful Response!")
-            await self.vocab_game(result.channel, result.content)
+            await self.vocab_game(result.channel, targets, used_words)
 
     @app_commands.command()
     async def countdown(self, interaction: Interaction, seconds: int):
@@ -74,10 +75,11 @@ class VocabCog(commands.Cog):
 
     @app_commands.command()
     async def vocab(self, interaction: Interaction):
-        words = ['apple', 'banana', 'orange']
-        target = sample(words, 1)[0]
+        targets = ['apple', 'banana', 'orange', 'blueberry', 'strawberry', 'cherry', 'grapefruit', 'kiwi', 'mango', 'peach',  'watermelon', 'pear', 'respberry']
+        used_words = []
+        #target = sample(words, 1)[0]
         await interaction.response.defer()
-        await self.vocab_game(interaction.channel, target)
+        await self.vocab_game(interaction.channel, targets, used_words)
 
             
 
