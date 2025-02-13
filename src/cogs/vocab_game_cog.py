@@ -35,7 +35,7 @@ class VocabCog(commands.Cog):
                 timeout=timer_duration,
                 check=lambda m: m.channel.id == channel_id and m.content.lower() in targets and m.content.lower() not in used_words
             )
-            return message.lower()
+            return message
         except asyncio.TimeoutError:
             return None
 
@@ -64,7 +64,7 @@ class VocabCog(commands.Cog):
         if result == "Timer finished!":
             await channel.send("Time's up!")
         else:
-            used_words.append(result.content)
+            used_words.append(result.content.lower())
             await result.reply(content=f"Successful Response!")
             await self.vocab_game(result.channel, targets, used_words)
 
