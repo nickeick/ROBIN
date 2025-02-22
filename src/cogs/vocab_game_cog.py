@@ -3,6 +3,8 @@ from discord.ext.commands import Context
 from discord import app_commands, Interaction, Message
 import asyncio
 from random import sample
+import os
+import pickle
 
 IS_ENABLED = True
 
@@ -11,6 +13,12 @@ class VocabCog(commands.Cog):
         self.bot = bot
         self.countdown_text = "### Countdown \n # "
         self.mute_id = 870946768928534528
+        # Path to the language model that contains your word embeddings
+        self.file_path = '../../assets/fasttext.p'
+        if os.path.exists(self.file_path):
+            self.model = pickle.load(open(self.file_path, "rb"))
+        else:
+            self.model = None
 
     async def cog_check(self, ctx: Context):
         if (not IS_ENABLED):
@@ -39,15 +47,27 @@ class VocabCog(commands.Cog):
         except asyncio.TimeoutError:
             return None
 
+    # Access the word embeddings and find the most similar words to the input word
+    async def get_similar_words(self, word: str, topn: int):
+        if self.model:
+            words = self.model.most_similar(word, topn=topn)
+            words_list = list(set(map(lambda x: x[0].lower(), words)))
+            return words_list
+
     async def vocab_game(self, channel, targets: list, used_words: list):
         """Start a timer that cancels if a specific message is received."""
         if channel.id != self.mute_id:
             await channel.send("You can only play this game in #mute!")
             return
+        
+        if targets == None:
+            await channel.send("No similar words found")
+            return
+
         timer_duration = 10  # Duration of the timer in seconds
 
         # Run the tasks concurrently
-        timer_task = asyncio.create_task(self.timer(channel, f"### You have {timer_duration} seconds to type a fruit \n # ", timer_duration))
+        timer_task = asyncio.create_task(self.timer(channel, f"### You have {timer_duration} seconds to type a similar word \n # ", timer_duration))
         message_task = asyncio.create_task(self.check_for_message(targets, timer_duration, self.mute_id, used_words))
 
         # Wait for either the timer to finish or a message to be sent
@@ -65,6 +85,7 @@ class VocabCog(commands.Cog):
             await channel.send("Time's up!")
         else:
             used_words.append(result.content.lower())
+            targets = self.get_similar_words(result.content.lower(), 100)
             await result.reply(content=f"Successful Response!")
             await self.vocab_game(result.channel, targets, used_words)
 
@@ -75,11 +96,15 @@ class VocabCog(commands.Cog):
 
     @app_commands.command()
     async def vocab(self, interaction: Interaction):
-        targets = ['apple', 'banana', 'orange', 'blueberry', 'strawberry', 'cherry', 'grapefruit', 'kiwi', 'mango', 'peach',  'watermelon', 'pear', 'respberry']
-        used_words = []
-        #target = sample(words, 1)[0]
-        await interaction.response.defer()
-        await self.vocab_game(interaction.channel, targets, used_words)
+        starting_words = ['apple', 'banana', 'orange', 'blueberry', 'strawberry', 'cherry', 'grapefruit', 'kiwi', 'mango', 'peach', 'watermelon', 'pear', 'raspberry']
+        starting_word = sample(starting_words, 1)
+        used_words = [starting_word]
+        if self.model:
+            targets = self.get_similar_words(starting_word, 100)
+            await interaction.response.defer()
+            await self.vocab_game(interaction.channel, targets, used_words)
+        else:
+            await interaction.response.send_message("Sorry! I can't find the model")
 
             
 
