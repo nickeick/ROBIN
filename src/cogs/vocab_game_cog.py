@@ -14,9 +14,9 @@ class VocabCog(commands.Cog):
         self.countdown_text = "### Countdown \n # "
         self.mute_id = 870946768928534528
         # Path to the language model that contains your word embeddings
-        self.file_path = '../../assets/fasttext.p'
+        self.file_path = 'assets/fasttext.p'
         if os.path.exists(self.file_path):
-            self.model = pickle.load(open(self.file_path, "rb"))
+            self.model = None #pickle.load(open(self.file_path, "rb"))
         else:
             self.model = None
 
