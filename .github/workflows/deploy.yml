@@ -15,7 +15,7 @@ jobs:
       - name: Set up SSH
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          IP_ADDRESS: ${{ secrets.IP_ADDRESS }}
+          IP_ADDRESS: ${{ secrets.TAILSCALE_IP }}
         run: |
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
@@ -24,7 +24,7 @@ jobs:
 
       - name: Deploy to Raspberry Pi
         env:
-          IP_ADDRESS: ${{ secrets.IP_ADDRESS }}
+          IP_ADDRESS: ${{ secrets.TAILSCALE_IP }}
         run: |
           ssh-keyscan -H $IP_ADDRESS >> ~/.ssh/known_hosts
           rsync -avz . pi@$IP_ADDRESS:/home/pi/app
