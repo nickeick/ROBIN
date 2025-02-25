@@ -8,3 +8,4 @@ discord/
 *.log
 testenv/
 assets/
+venv/

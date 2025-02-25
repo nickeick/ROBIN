@@ -1,16 +1,32 @@
 name: deploy-to-pi
-on: [push]
+on:
+  push:
+    branches:
+       - main
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Install SSH Key
-        uses: shimataro/ssh-key-action@v2
-        with:
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          name: github_actions
-          known_hosts: ${{ secrets.SSH_HOST }}
-          if_key_exists: replace
-      - name: Pull
-        run: ssh ${{ secrets.IP_ADDRESS }} "cd /home/pi/app && /usr/bin/git pull origin"
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          IP_ADDRESS: ${{ secrets.IP_ADDRESS }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H pi@$IP_ADDRESS >> ~/.ssh/known_hosts
+
+      - name: Deploy to Raspberry Pi
+        env:
+          IP_ADDRESS: ${{ secrets.IP_ADDRESS }}
+        run: |
+          ssh-keyscan -H $IP_ADDRESS >> ~/.ssh/known_hosts
+          rsync -avz . pi@$IP_ADDRESS:/home/pi/app
+          ssh pi@$IP_ADDRESS 'bash /home/pi/app/deploy.sh'
       
