@@ -25,13 +25,10 @@ jobs:
         run: |
           echo "Checking if GitHub Actions can see the Pi..."
           ping -c 4 ${{ secrets.TAILSCALE_PI_IP }}
-
           echo "Checking available network interfaces..."
           ip addr show
-
           echo "Checking if SSH is installed in GitHub Actions..."
           which ssh || echo "SSH NOT FOUND"
-
           echo "Manually testing SSH connection..."
           ssh -v -o StrictHostKeyChecking=no pi@${{ secrets.TAILSCALE_PI_IP }} "echo SSH connection successful"
 
