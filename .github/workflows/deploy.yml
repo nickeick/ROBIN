@@ -29,12 +29,11 @@ jobs:
       - name: Set up SSH
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          IP_ADDRESS: ${{ secrets.TAILSCALE_IP }}
         run: |
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H pi@$IP_ADDRESS >> ~/.ssh/known_hosts
+          ssh-keyscan -H pi@100.105.83.97 >> ~/.ssh/known_hosts
 
       - name: Deploy to Raspberry Pi
         env:
