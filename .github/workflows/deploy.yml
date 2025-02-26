@@ -12,6 +12,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      - name: Set up Tailscale in GitHub Actions
+        env:
+          TAILSCALE_AUTH_KEY: ${{ secrets.TAILSCALE_AUTH_KEY }}
+      - name: Debug Network & SSH
+        run: |
+          curl -fsSL https://tailscale.com/install.sh | sh
+          sudo tailscale up --authkey=$TAILSCALE_AUTH_KEY
+          tailscale status
+
       - name: Debug Network & SSH
         run: |
           echo "Checking if GitHub Actions can see the Pi..."
@@ -26,11 +35,6 @@ jobs:
           echo "Manually testing SSH connection..."
           ssh -v -o StrictHostKeyChecking=no pi@${{ secrets.TAILSCALE_PI_IP }} "echo SSH connection successful"
 
-      - name: Debug Tailscale Connection
-        run: |
-          tailscale status
-          tailscale ip -4
-          ping -c 4 ${{ secrets.TAILSCALE_IP }}
 
       - name: Set up SSH
         env:
