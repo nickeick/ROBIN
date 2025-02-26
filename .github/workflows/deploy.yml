@@ -36,10 +36,8 @@ jobs:
           ssh-keyscan -H pi@100.105.83.97 >> ~/.ssh/known_hosts
 
       - name: Deploy to Raspberry Pi
-        env:
-          IP_ADDRESS: ${{ secrets.TAILSCALE_IP }}
         run: |
-          ssh-keyscan -H $IP_ADDRESS >> ~/.ssh/known_hosts
-          rsync -avz . pi@$IP_ADDRESS:/home/pi/app
-          ssh pi@$IP_ADDRESS 'bash /home/pi/app/deploy.sh'
+          ssh-keyscan -H pi@100.105.83.97 >> ~/.ssh/known_hosts
+          rsync -avz . pi@100.105.83.97:/home/pi/app
+          ssh pi@100.105.83.97 'bash /home/pi/app/deploy.sh'
       
