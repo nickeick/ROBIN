@@ -23,7 +23,7 @@ jobs:
       - name: Debug Network & SSH
         run: |
           echo "Checking if GitHub Actions can see the Pi..."
-          ping -c 4 ${{ secrets.TAILSCALE_PI_IP }}
+          ping -c 4 ${{ secrets.TAILSCALE_IP }}
 
           echo "Checking available network interfaces..."
           ip addr show
@@ -32,7 +32,7 @@ jobs:
           which ssh || echo "SSH NOT FOUND"
 
           echo "Manually testing SSH connection..."
-          ssh -v -o StrictHostKeyChecking=no pi@${{ secrets.TAILSCALE_PI_IP }} "echo SSH connection successful"
+          ssh -v -o StrictHostKeyChecking=no pi@${{ secrets.TAILSCALE_IP }} "echo SSH connection successful"
 
 
       - name: Set up SSH
