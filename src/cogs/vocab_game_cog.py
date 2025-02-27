@@ -16,7 +16,7 @@ class VocabCog(commands.Cog):
         # Path to the language model that contains your word embeddings
         self.file_path = 'assets/fasttext.p'
         if os.path.exists(self.file_path):
-            self.model = None #pickle.load(open(self.file_path, "rb"))
+            self.model = pickle.load(open(self.file_path, "rb"))
         else:
             self.model = None
 
