@@ -42,7 +42,7 @@ jobs:
 
       - name: Deploy to Raspberry Pi
         run: |
-          ssh-keyscan -H pi@100.105.83.97 >> ~/.ssh/known_hosts
-          rsync -avz . pi@100.105.83.97:/home/pi/app
+          ssh-keyscan -H ${{ secrets.TAILSCALE_IP }} >> ~/.ssh/known_hosts
+          rsync -avz . ${{ secrets.TAILSCALE_IP }}:/home/pi/app
           ssh -o StrictHostKeyChecking=no pi@100.105.83.97 'bash /home/pi/app/deploy.sh'
       
