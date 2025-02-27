@@ -44,5 +44,5 @@ jobs:
         run: |
           ssh-keyscan -H ${{ secrets.TAILSCALE_IP }} >> ~/.ssh/known_hosts
           rsync -avz . pi@${{ secrets.TAILSCALE_IP }}:/home/pi/app
-          ssh -o StrictHostKeyChecking=no pi@100.105.83.97 'bash /home/pi/app/deploy.sh'
+          ssh -o StrictHostKeyChecking=no pi@${{ secrets.TAILSCALE_IP }} 'bash /home/pi/app/deploy.sh'
       
