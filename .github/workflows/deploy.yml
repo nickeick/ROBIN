@@ -43,6 +43,6 @@ jobs:
       - name: Deploy to Raspberry Pi
         run: |
           ssh-keyscan -H ${{ secrets.TAILSCALE_IP }} >> ~/.ssh/known_hosts
-          rsync -avz . pi@${{ secrets.TAILSCALE_IP }}:/home/pi/app
+          rsync -avz --exclude='.git/' --exclude='.github/' . pi@${{ secrets.TAILSCALE_IP }}:/home/pi/app
           ssh -o StrictHostKeyChecking=no pi@${{ secrets.TAILSCALE_IP }} 'bash /home/pi/app/deploy.sh'
       
