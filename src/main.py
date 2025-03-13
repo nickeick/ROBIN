@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 
 import sqlite3
 import discord
+from discord import AllowedMentions
 from discord.ext.commands import Context
 from discord.ext import commands
 from aiohttp import ClientSession, web
@@ -40,7 +41,7 @@ class CustomBot(commands.Bot):
         # here, we are loading extensions prior to sync to ensure we are syncing interactions defined in those extensions.
 
         for filename in os.listdir('src/cogs'):
-            if filename.endswith('.py'):
+            if filename.endswith('cog.py'):
                 await self.load_extension(f'cogs.{filename[:-3]}')
                 print(f'Loaded: cogs.{filename[:-3]}')
 
@@ -128,7 +129,7 @@ async def main():
 
     async with ClientSession() as our_client, DatabaseManager(DATABASE_PATH) as db_manager:
         # 2. We become responsible for starting the bot.
-            async with CustomBot(commands.when_mentioned, db_manager=db_manager, web_client=our_client, intents=intents, testing_guild_id=TEST_GUILD) as bot:
+            async with CustomBot(commands.when_mentioned, db_manager=db_manager, web_client=our_client, intents=intents, allowed_mentions=AllowedMentions.all(), testing_guild_id=TEST_GUILD) as bot:
 
                 await bot.start(os.getenv('TOKEN'))
 
