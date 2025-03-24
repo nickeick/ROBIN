@@ -69,6 +69,34 @@ class DynamicLeaveButton(discord.ui.Button):
             await interaction.response.send_message('You are not in ' + interaction.guild.get_role(self.role_id).name, ephemeral=True)
 
 class GangCog(commands.Cog):
+    """
+    A class that inherits from the commands.Cog class with the purpose of implementing the Server Brain Cell and its functions.
+
+    ...
+
+    Attributes
+    ----------
+    bot: commands.Bot
+        The Bot object representing the discord bot
+    all_gang_ids: List[int]
+        A list of all gang role ids that are taken from the database
+
+    Methods
+    -------
+    cog_check(ctx)
+        A default method in Cogs for determining the Cog's availability
+    
+    Commands
+    --------
+    add_gang(gang_name: str)
+        An admin is allowed to make a new gang which adds a role, channel, and database entry
+    join_gang(gang_name: str)
+        Allows a user to join a gang which includes a role and its associated channel
+    leave_gang(gang_name: str)
+        Allows a user to leave a gang
+    generate_gangs_list()
+        An admin is allowed to print a list of gang name text that each have 'join' and 'leave' buttons that add users to the connected gang
+    """
     def __init__(self, bot: commands.Bot, all_gang_ids):
         self.bot = bot
         self.bot_test = 582060071052115978
