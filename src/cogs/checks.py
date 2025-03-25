@@ -23,3 +23,11 @@ def has_brain_cell():
         if any(role.id == braincell_id for role in interaction.user.roles):
             return
         raise app_commands.MissingRole(771408034957623348)
+    return app_commands.check(predicate)
+
+def has_voice_state():
+    async def predicate(interaction: Interaction):
+        if interaction.user.voice is not None:
+            return
+        raise app_commands.ChannelNotFound(message="This command requires being in a voice channel")
+    return app_commands.check(predicate)
