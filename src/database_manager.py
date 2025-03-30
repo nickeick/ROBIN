@@ -157,6 +157,37 @@ class DatabaseManager:
     async def get_all_gang_ids(self):
         role_ids = await self.execute_with_retries("SELECT role_id from gangs", (), fetchall=True)
         return role_ids
+    
+    async def add_new_nft(self, url: str, user_id: int, price: int):
+        highest_id = await self.execute_with_retries("SELECT MAX(id) FROM nfts", ())
+        await self.execute_with_retries("INSERT INTO nfts VALUES (?,?,?,?)", (highest_id[0] + 1, url, str(user_id), price))
+        await self.commit()
+        return highest_id[0] + 1
+    
+    async def get_nft_url(self, id: int):
+        url = await self.execute_with_retries("SELECT url FROM nfts WHERE id = ?", (id,))
+        return url
+    
+    async def get_nft_shop(self, user_id: int):
+        urls = await self.execute_with_retries("SELECT id, url, price FROM nfts WHERE userid = ? AND price != ?", (str(user_id), 0), fetchall=True)
+        return urls
+    
+    async def get_nft_shop_amount(self, user_id: int):
+        amount = await self.execute_with_retries("SELECT COUNT(*) FROM nfts WHERE userid = ? AND price != ?", (str(user_id), 0))
+        return amount
+    
+    async def get_nft_owner(self, id: int):
+        owner  = await self.execute_with_retries("SELECT userid FROM nfts WHERE id = ?", (id,))
+        return int(owner[0])
+    
+    async def remove_nft(self, id: int):
+        await self.execute_with_retries("DELETE FROM nfts WHERE id = ?", (id,))
+        await self.commit()
+
+    async def move_nft(self, id: int, user_id: int):
+        url  = await self.execute_with_retries("SELECT url FROM nfts WHERE id = ?", (id,))
+        await self.execute_with_retries("REPLACE INTO nfts (id, url, userid, price) VALUES (?,?,?,?)", (id, url[0], str(user_id), 0))
+        await self.commit()
 
     async def commit(self):
         with self.connection as conn:
