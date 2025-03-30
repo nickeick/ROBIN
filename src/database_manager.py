@@ -169,7 +169,7 @@ class DatabaseManager:
         return url
     
     async def get_nft_shop(self, user_id: int):
-        urls = await self.execute_with_retries("SELECT url FROM nfts WHERE userid = ? AND price != ?", (str(user_id), 0), fetchall=True)
+        urls = await self.execute_with_retries("SELECT id, url, price FROM nfts WHERE userid = ? AND price != ?", (str(user_id), 0), fetchall=True)
         return urls
     
     async def get_nft_shop_amount(self, user_id: int):
