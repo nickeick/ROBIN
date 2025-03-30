@@ -18,8 +18,8 @@ class VoiceCog(commands.Cog):
             await ctx.send('This Cog is disabled')
         return IS_ENABLED
     
-    #@is_in_dojo()
-    #@has_voice_state()
+    @checks.checks.is_in_dojo()
+    @checks.checks.has_voice_state()
     @app_commands.command(description='Server mute someone in call for 1 minute at the cost of 1 brain cell')
     async def mute(self, interaction: Interaction, member: Member):
         if member.voice is not None:

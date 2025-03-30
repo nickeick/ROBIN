@@ -22,11 +22,21 @@ class NFTCog(commands.Cog):
 
     @app_commands.command()
     async def list(self, interaction: Interaction, image: Attachment, price: int):
+        if price < 1:
+            await interaction.response.send_message("Your NFT's price must be above zero")
+            return
+        shop_amount = await self.bot.db_manager.get_nft_shop_amount(interaction.user.id)
+        if shop_amount > 2:
+            await interaction.response.send_message(f"You have the maximum items in your shop! ({shop_amount})")
+            return
         if image.content_type.startswith("image/"):
-            await interaction.response.send_message(f"Your NFT was added to your shop at {price}")
+            new_id = await self.bot.db_manager.add_new_nft(image.url, interaction.user.id, price)
+            await interaction.response.send_message(f"NFT ID #{new_id} was added to your shop at {price}")
 
     @app_commands.command()
     async def shop(self, interaction: Interaction, person: typing.Optional[Member]):
+        if person is None:
+            person = interaction.user
         nfts = await self.bot.db_manager.get_nft_shop(person.id)
         output = []
         for nft in nfts:
