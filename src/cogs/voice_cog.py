@@ -4,7 +4,7 @@ from discord import app_commands
 from discord import Member, Interaction
 import asyncio
 
-import checks
+import checks.checks
 
 IS_ENABLED = True
 
