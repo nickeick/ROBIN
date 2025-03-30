@@ -4,7 +4,7 @@ from discord import app_commands
 from discord import Member, Interaction
 import asyncio
 
-#from checks import is_in_dojo, has_voice_state
+import checks
 
 IS_ENABLED = True
 
