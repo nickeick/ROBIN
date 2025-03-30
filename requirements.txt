@@ -10,3 +10,4 @@ pycparser==2.22
 PyNaCl==1.5.0
 python-dotenv==1.0.1
 yarl==1.11.1
+-e ./src/checks
