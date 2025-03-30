@@ -6,7 +6,7 @@ def is_in_dojo():
         dojo_id = 578065102310342677
         if interaction.guild.id == dojo_id:
             return True
-        raise app_commands.DisabledCommand(message="This command is not enabled for this server")
+        raise app_commands.MissingPermissions(message="This command is not enabled for this server")
     return app_commands.check(predicate)
 
 def is_admin():
@@ -29,5 +29,13 @@ def has_voice_state():
     async def predicate(interaction: Interaction):
         if interaction.user.voice is not None:
             return True
-        raise app_commands.ChannelNotFound(message="This command requires being in a voice channel")
+        raise app_commands.MissingPermissions(message="This command requires being in a voice channel")
+    return app_commands.check(predicate)
+
+def in_gang_channel():
+    async def predicate(interaction: Interaction):
+        dojo_id = 578065102310342677
+        if interaction.guild.id == dojo_id and interaction.channel.name[-5:] == "-gang":
+            return True
+        raise app_commands.CheckFailure(message="This command can only be used in a 'gang' channel")
     return app_commands.check(predicate)
