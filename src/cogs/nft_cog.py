@@ -38,9 +38,19 @@ class NFTCog(commands.Cog):
         if person is None:
             person = interaction.user
         nfts = await self.bot.db_manager.get_nft_shop(person.id)
-        output = []
+        await interaction.response.send_message(f"Sending {person.nick}'s NFT shop:")
         for nft in nfts:
-            output.append(self.make_embed(nft[0], nft[1], nft[2]))
+            await interaction.channel.send(embed=self.make_embed(nft[0], nft[1], nft[2]))
+
+    @app_commands.command()
+    async def collection(self, interaction: Interaction, person: typing.Optional[Member]):
+        if person is None:
+            person = interaction.user
+        nfts = await self.bot.db_manager.get_all_nfts(person.id)
+        await interaction.response.send_message(f"Sending all of {person.nick}'s NFTs:")
+        for nft in nfts:
+            await interaction.channel.send(embed=self.make_embed(nft[0], nft[1], nft[2]))
+
             
 
 

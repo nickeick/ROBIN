@@ -24,7 +24,7 @@ class VoiceCog(commands.Cog):
     async def mute(self, interaction: Interaction, member: Member):
         if member.voice is not None:
             await member.edit(mute=True)
-            await interaction.response.send_message(f"You have muted {member.nick}")
+            await interaction.response.send_message(f"You have muted {member.nick} for 60 seconds")
             await asyncio.sleep(60)
             await member.edit(mute=False)
         else:
