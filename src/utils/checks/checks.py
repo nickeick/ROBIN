@@ -17,7 +17,7 @@ def is_admin():
         raise app_commands.MissingPermissions(["Admin"])
     return app_commands.check(predicate)
 
-def has_brain_cell():
+def has_brain_cell_role():
     async def predicate(interaction: Interaction):
         braincell_id = 771408034957623348
         if any(role.id == braincell_id for role in interaction.user.roles):
