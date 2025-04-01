@@ -1,4 +1,4 @@
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord.ext.commands import Context, Cog
 from discord import app_commands
 from discord import Member, Interaction
@@ -15,6 +15,7 @@ class VoiceCog(commands.Cog):
         self.bot = bot
         self.dojo_id = 578065102310342677
         self.muted_today = []
+        self.reset_mute_lock.start()
 
     async def cog_check(self, ctx: Context):
         if (not IS_ENABLED):
@@ -48,6 +49,7 @@ class VoiceCog(commands.Cog):
         else:
             await interaction.response.send_message("The person you want to mute is not in a voice channel")
 
+    @tasks.loop(time=time)
     async def reset_mute_lock(self):
         self.muted_today = []
 
