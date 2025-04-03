@@ -49,6 +49,11 @@ class VoiceCog(commands.Cog):
         else:
             await interaction.response.send_message("The person you want to mute is not in a voice channel")
 
+    @mute.error
+    async def mute_error(self, interaction: Interaction, error: app_commands.AppCommandError):
+        if isinstance(error, app_commands.MissingPermissions):
+            await interaction.response.send_message(f"Error: {error}", ephemeral=True)
+
     @tasks.loop(time=time)
     async def reset_mute_lock(self):
         self.muted_today = []
