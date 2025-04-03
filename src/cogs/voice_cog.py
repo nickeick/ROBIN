@@ -28,6 +28,7 @@ class VoiceCog(commands.Cog):
     async def mute(self, interaction: Interaction, member: Member):
         if member.id in self.muted_today:
             await interaction.response.send_message(f"{member.nick} has already been muted today!")
+            return
 
         if member.voice is not None:
             if member.voice.channel.guild.id != self.dojo_id:
