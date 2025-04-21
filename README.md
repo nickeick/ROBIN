@@ -8,7 +8,6 @@ In order to get the program running you will need a few things in addition to th
 
 - You will need a number of python external libraries including:
   - DiscordAPI
-  - sqlite3
 
 - You will need environmental variables including...
   - TOKEN= for the discord API connection
