@@ -8,6 +8,9 @@ from random import randint
 IS_ENABLED = True
 
 class LeaderboardView(discord.ui.View): # Create a class called LeaderboardView that subclasses discord.ui.View
+    def __init__(self):
+            super().__init__(timeout=None)
+    
     @discord.ui.button(label="Left", style=discord.ButtonStyle.blurple, emoji="⬅️") # Create a button with the label "Left"
     async def left_button_callback(self, interaction: Interaction, button):
         braincell_cog = interaction.client.get_cog('BrainCellCog')
