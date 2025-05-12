@@ -18,7 +18,6 @@ ROBIN (Responsive Online Bot and Intelligent Navigator) is a Discord bot and vir
 ### Prerequisites
 
 - Python 3.10+
-- [FFMPEG](https://ffmpeg.org/download.html) installed and added to your system path
 - A Discord bot token from the [Discord Developer Portal](https://discord.com/developers/applications)
 
 ### Setup Steps
