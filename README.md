@@ -1,18 +1,61 @@
-# ROBIN
-Hi! Welcome to the ROBIN project. A discord bot and virtual assisstant.
+# 🤖 ROBIN - Your Discord Virtual Assistant
 
-The code is made up of a server and clients that connect over a local network as well as an SQLite3 database.
+ROBIN (Responsive Online Bot and Intelligent Navigator) is a Discord bot and virtual assistant designed to enhance your server experience with voice command recognition, task automation, and smart interactions.
 
-In order to get the program running you will need a few things in addition to the files here:
-- You will need FFMPEG which you can download at https://www.ffmpeg.org/
+## ✨ Features
 
-- You will need a number of python external libraries including:
-  - DiscordAPI
+- 🎙️ Voice assistant capabilities using speech recognition
+- 🔊 Audio playback with FFMPEG
+- 📅 Smart task and reminder management (planned)
+- 🔌 Modular command handling
+- 🧪 SQLite3-based local database
+- ⚙️ Customizable environment and easy to configure
 
-- You will need environmental variables including...
-  - TOKEN= for the discord API connection
-  - AUDIO_PATH= for a location to store your audio files (default is in the same directory)
-  - DATABASE_PATH= for a location to store your data (default is in the same directory)
-  - FFMPEG_PATH= the location of your ffmpeg executable
+---
 
+## 🛠️ Installation
 
+### Prerequisites
+
+- Python 3.10+
+- [FFMPEG](https://ffmpeg.org/download.html) installed and added to your system path
+- A Discord bot token from the [Discord Developer Portal](https://discord.com/developers/applications)
+
+### Setup Steps
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/nickeick/ROBIN.git
+   cd ROBIN
+
+2. **Install requirements**
+   pip install -r requirements.txt
+
+3. **Add .env variables**
+  export TOKEN=your_discord_token
+  export DATABASE_PATH=./db.sqlite3
+
+4. **Run the Bot**
+   python src/main.py
+
+### Contributing
+
+Contributions are welcome! To get started:
+
+    Fork the repo
+
+    Create a new branch: git checkout -b feature-name
+
+    Make your changes
+
+    Submit a pull request
+
+Please open an issue first for major changes. Be sure your code is well-documented and tested.
+
+## Contact
+
+Have questions or suggestions? Feel free to:
+
+    Open an issue
+
+    Contact @nickeick
