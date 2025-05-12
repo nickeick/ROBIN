@@ -1,11 +1,9 @@
 # 🤖 ROBIN - Your Discord Virtual Assistant
 
-ROBIN (Responsive Online Bot and Intelligent Navigator) is a Discord bot and virtual assistant designed to enhance your server experience with voice command recognition, task automation, and smart interactions.
+ROBIN is a Discord bot and virtual assistant designed to enhance your server experience with command recognition, task automation, and smart interactions.
 
 ## ✨ Features
 
-- 🎙️ Voice assistant capabilities using speech recognition
-- 🔊 Audio playback with FFMPEG
 - 📅 Smart task and reminder management (planned)
 - 🔌 Modular command handling
 - 🧪 SQLite3-based local database
