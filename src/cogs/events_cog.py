@@ -1,6 +1,6 @@
 from discord.ext import commands
 from discord.ext.commands import Context
-from discord import app_commands, Member, RawReactionActionEvent, Message
+from discord import app_commands, Member, RawReactionActionEvent, Message, ScheduledEvent, User
 
 
 IS_ENABLED = True
@@ -86,6 +86,23 @@ class EventsCog(commands.Cog):
                 await message.reply(content="Hi " + message_content + ", I'm Robin")
         if "thank you robin" in message.content.lower():
             await message.reply(content="You're welcome")
+
+    async def on_scheduled_event_user_add(self, event: ScheduledEvent, user: User):
+        """
+        Checks if a user that is on the mailing list is added to an event and then sends and email
+        with the event's details in an ics file to that user's email.
+
+        Parameters
+        ----------
+        event: ScheduledEvent
+            Object representing the event that the user was added to
+        user: User
+            Object representing the user that subscribed to the event
+        """
+        mailing_list = [344304643767271425]
+        if user.id not in mailing_list:
+            return
+        await user.send(event.description)
 
 
 async def setup(bot):
