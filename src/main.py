@@ -123,6 +123,7 @@ async def main():
     intents.members = True
     intents.voice_states = True
     intents.message_content = True
+    intents.guild_scheduled_events = True
 
     # Alternatively, you could use:
     # discord.utils.setup_logging(handler=handler, root=False)
