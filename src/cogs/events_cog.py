@@ -89,6 +89,7 @@ class EventsCog(commands.Cog):
         if "thank you robin" in message.content.lower():
             await message.reply(content="You're welcome")
 
+    @commands.Cog.listener()
     async def on_scheduled_event_user_add(self, event: ScheduledEvent, user: User):
         """
         Checks if a user that is on the mailing list is added to an event and then sends and email
