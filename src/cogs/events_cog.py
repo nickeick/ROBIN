@@ -1,7 +1,9 @@
 from discord.ext import commands
 from discord.ext.commands import Context
 from discord import app_commands, Member, RawReactionActionEvent, Message, ScheduledEvent, User
-
+import smtplib
+from email.message import EmailMessage
+from email.policy import SMTP
 
 IS_ENABLED = True
 
