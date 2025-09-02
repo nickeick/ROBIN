@@ -104,6 +104,11 @@ class EventsCog(commands.Cog):
         mailing_list = [344304643767271425]
         if user.id not in mailing_list:
             return
+        msg = EmailMessage()
+        msg.set_content(event.description)
+        msg['Subject'] = f'Discord event: {event.name}'
+        msg['From'] = 'robin@nickeick.com'
+        msg['To'] = 'nickeick17@gmail.com'
         await user.send(event.description)
 
 
