@@ -3,7 +3,7 @@ from discord.ext import commands, tasks
 from discord.ext.commands import Context
 from discord import app_commands, Interaction, Guild, Client
 import discord
-from random import randint
+from random import sample
 
 IS_ENABLED = True
 
@@ -264,10 +264,16 @@ class BrainCellCog(commands.Cog):
         for member in not_bots:
             if braincell_role in member.roles:
                 await member.remove_roles(braincell_role)
+
+        # Give out braincell_amount of new braincells
         size = len(not_bots)
-        braincell_amount = 2
+        # Automatically adjust amount of braincells given at a time
+        braincell_amount = round(size/100)
+        # Create array for indexes of braincell_amount of users
+        braincelled = sample(range(1,size+1), braincell_amount)
+        # Update the braincell people
         for times in range(braincell_amount):
-            new_user = randint(0,size-1)
+            new_user = braincelled[times]
             await not_bots[new_user].add_roles(braincell_role)
         self.think_locked = []
 
